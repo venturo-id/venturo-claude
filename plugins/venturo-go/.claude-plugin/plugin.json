@@ -1,0 +1,19 @@
+{
+  "name": "venturo-go",
+  "version": "1.0.0",
+  "description": "Go backend development automation for Venturo skeleton - Guided workflows for features, entities, endpoints, and adapters",
+  "author": {
+    "name": "Venturo",
+    "email": "dev@venturo.id"
+  },
+  "license": "MIT",
+  "keywords": [
+    "go",
+    "golang",
+    "backend",
+    "gin",
+    "clean-architecture",
+    "crud",
+    "code-generation"
+  ]
+}

@@ -6,7 +6,7 @@
     },
     "metadata": {
         "description": "Claude Code plugin marketplace by Venturo - Professional development tools and automation utilities",
-        "version": "1.0.1",
+        "version": "1.0.2",
         "pluginRoot": "./plugins"
     },
     "plugins": [
@@ -37,6 +37,66 @@
                 "automation",
                 "qa-engineer",
                 "test-generation"
+            ]
+        },
+        {
+            "name": "venturo-go",
+            "source": "./plugins/venturo-go",
+            "description": "Go backend development automation for Venturo skeleton - Guided workflows for features, entities, endpoints, and adapters",
+            "version": "1.0.0",
+            "author": {
+                "name": "Venturo",
+                "email": "dev@venturo.id"
+            },
+            "homepage": "https://github.com/venturo-id/venturo-claude/tree/production/plugins/venturo-go",
+            "repository": "https://github.com/venturo-id/venturo-claude",
+            "license": "MIT",
+            "keywords": [
+                "go",
+                "golang",
+                "backend",
+                "gin",
+                "clean-architecture",
+                "crud",
+                "code-generation"
+            ],
+            "category": "development",
+            "tags": [
+                "go",
+                "backend",
+                "clean-architecture",
+                "feature-generation",
+                "crud-automation"
+            ]
+        },
+        {
+            "name": "venturo-react",
+            "source": "./plugins/venturo-react",
+            "description": "React frontend development automation for Venturo skeleton - Guided workflows for features from OpenAPI specs",
+            "version": "1.0.0",
+            "author": {
+                "name": "Venturo",
+                "email": "dev@venturo.id"
+            },
+            "homepage": "https://github.com/venturo-id/venturo-claude/tree/production/plugins/venturo-react",
+            "repository": "https://github.com/venturo-id/venturo-claude",
+            "license": "MIT",
+            "keywords": [
+                "react",
+                "frontend",
+                "typescript",
+                "mui",
+                "openapi",
+                "react-query",
+                "code-generation"
+            ],
+            "category": "development",
+            "tags": [
+                "react",
+                "frontend",
+                "typescript",
+                "openapi-integration",
+                "feature-generation"
             ]
         }
     ]
