@@ -1,0 +1,19 @@
+{
+  "name": "venturo-react",
+  "version": "1.0.0",
+  "description": "React frontend development automation for Venturo skeleton - Guided workflows for features from OpenAPI specs",
+  "author": {
+    "name": "Venturo",
+    "email": "dev@venturo.id"
+  },
+  "license": "MIT",
+  "keywords": [
+    "react",
+    "frontend",
+    "typescript",
+    "mui",
+    "openapi",
+    "react-query",
+    "code-generation"
+  ]
+}
