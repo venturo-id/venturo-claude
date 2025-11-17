@@ -9,6 +9,7 @@ A modern, modular E2E testing plugin that leverages specialized agents and guide
 ## Architecture
 
 ### 🧩 Automation Flow
+- **Planning** - Guided scenario capture with persistent docs/test-scenario storage
 - **Installation** - Playwright setup, env preparation, and validation test creation
 - **Generation** - Guided scenario collection and spec generation with verified selectors
 - **Execution** - Sequenced Playwright runs with reporting and troubleshooting context
@@ -18,6 +19,7 @@ A modern, modular E2E testing plugin that leverages specialized agents and guide
 - **Test Runner** - Test execution and result analysis specialist (`agents/e2e-test-runner.md`)
 
 ### 📋 Clean Commands
+- **Plan** - Capture scenario backlog collaboratively and store it in `docs/test-scenario`
 - **Install** - Set up Playwright with dependencies and browsers
 - **Generate** - Create E2E tests from scenarios and application analysis
 - **Run** - Execute test suites with comprehensive reporting
