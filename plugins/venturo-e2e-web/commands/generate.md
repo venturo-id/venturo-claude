@@ -25,7 +25,7 @@ Example: src/features/auth/login.component.tsx
 If user doesn't know, offer to search by feature name.
 
 ### Step 3: Build Test Plan
-Use grep_search/semantic_search to find related file `.ts`, `.tsx`, `.html` to understanding existing implementation and create test plan :
+Study the component path and request relevant file snippets (`.ts`, `.tsx`, `.html`) if additional context is required. Summarize the implementation details, selectors, and data dependencies before creating a test plan:
 ```
 Scenario: Login sukses
 File: tests/auth/login-success.spec.ts
@@ -52,7 +52,7 @@ Environment variables:
 Approve to run e2e test ?
 ```
 
-### Step 4: Run mcp__playwright
+### Step 4: Run Playwright MCP
 Upon approval:
 1. Execute the scenario using `mcp__playwright` and WAIT until the run completes.
 2. Capture DOM selectors, interaction logs, and validation results from the MCP output.
@@ -160,7 +160,7 @@ test.describe('Auth / Login', () => {
 Before generating any test files, **analyze all provided scenarios** and group them intelligently.
 #### Step 1: Analyze All Scenarios
 - Inspect each scenario’s **component path**, **feature name**, and **semantic similarity** (e.g. “login sukses”, “login gagal” both relate to “auth/login”).
-- Use `semantic_grouping` or filename pattern matching to cluster related scenarios.
+- Manually group scenarios by shared component paths or feature prefixes (e.g., same folder or domain) before generating files.
 
 #### Step 2: Merge Related Scenarios
 If multiple scenarios share the same component or belong to the same feature directory, merge them into one Playwright file.

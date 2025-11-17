@@ -1,30 +1,26 @@
 # venturo-e2e-web
 
-Clean Playwright E2E testing automation with modular skills and specialized agents for comprehensive web application testing.
+Clean Playwright E2E testing automation with guided workflows and specialized agents for comprehensive web application testing.
 
 ## Overview
 
-A modern, modular E2E testing plugin that leverages specialized agents and reusable skills to provide comprehensive Playwright testing capabilities.
+A modern, modular E2E testing plugin that leverages specialized agents and guided workflows to provide comprehensive Playwright testing capabilities.
 
 ## Architecture
 
-### 🧩 Modular Skills
-- **Installation** - Playwright setup and browser management
-- **Generation** - Intelligent test case creation from user stories
-- **Execution** - Test running and comprehensive reporting
-- **Live Testing** - Real-time browser testing and debugging
+### 🧩 Automation Flow
+- **Installation** - Playwright setup, env preparation, and validation test creation
+- **Generation** - Guided scenario collection and spec generation with verified selectors
+- **Execution** - Sequenced Playwright runs with reporting and troubleshooting context
 
 ### 🤖 Specialized Agents
-- **Installer** - Playwright installation and configuration specialist
-- **Generator** - Test generation expert with best practices
-- **Runner** - Test execution and result analysis specialist
-- **Live Tester** - Real-time browser testing and debugging expert
+- **Installer** - Playwright installation and configuration specialist (`agents/e2e-installer.md`)
+- **Test Runner** - Test execution and result analysis specialist (`agents/e2e-test-runner.md`)
 
 ### 📋 Clean Commands
 - **Install** - Set up Playwright with dependencies and browsers
-- **Generate** - Create E2E tests from user stories and analysis
+- **Generate** - Create E2E tests from scenarios and application analysis
 - **Run** - Execute test suites with comprehensive reporting
-- **Test** - Live browser testing with real-time observation
 
 ## Quick Start
 
@@ -45,37 +41,31 @@ A modern, modular E2E testing plugin that leverages specialized agents and reusa
 /venturo-e2e-web:run tests/auth/ --project=chromium
 ```
 
-### 4. Live Testing
-```bash
-/venturo-e2e-web:test https://example.com
-/venturo-e2e-web:test demo --slowmo=300
-```
-
 ## Features
 
 ### 🚀 Smart Test Generation
 - User story analysis and scenario extraction
 - Application structure analysis for comprehensive coverage
 - Single-file test structure with inline utilities
-- Best practices enforcement
+- Best practices enforcement backed by verified selectors
 
-### 📊 Comprehensive Reporting
-- HTML reports with detailed results
-- Performance metrics and timing analysis
+### 📊 Guided Execution & Reporting
+- Sequential Playwright execution with clear confirmation steps
+- HTML report references and summarized pass/fail metrics
 - Failure analysis with debugging information
-- Trend analysis and recommendations
+- Optional configuration for reporters, workers, and projects
 
-### 🔍 Live Testing
-- Real-time browser control and observation
-- Interactive debugging with console monitoring
-- Screenshot and video capture
-- Multi-device testing simulation
+### 🧰 Streamlined Installation
+- Opinionated Playwright config (Chromium-only, sequential workers)
+- Automatic `.env.example` scaffolding for critical variables
+- Sample validation test generation for smoke coverage
+- `.gitignore` guidance for Playwright artifacts
 
 ### ⚡ Performance Optimized
 - Specialized agents for focused functionality
-- Modular skills for reusability
-- Efficient resource management
-- Parallel execution support
+- Lean workflows to reduce context usage
+- Efficient resource management during MCP runs
+- Clear separation between installation, generation, and execution responsibilities
 
 ## Usage Examples
 
@@ -96,33 +86,21 @@ A modern, modular E2E testing plugin that leverages specialized agents and reusa
 /venturo-e2e-web:run tests/auth/ --headed --debug
 ```
 
-### Live Testing Scenarios
-```bash
-/venturo-e2e-web:test scenario --device=mobile --debug
-/venturo-e2e-web:test demo --screenshots --video
-```
-
 ## Architecture Benefits
 
 ### 🎯 Focused Agents
 Each agent specializes in one domain:
-- **Installer** handles only installation and setup
-- **Generator** focuses on test creation and patterns
-- **Runner** manages execution and analysis
-- **Live Tester** provides real-time testing
+- **Installer** handles installation, env setup, and smoke validation
+- **Test Runner** manages discovery, execution, and analysis
 
-### 🔧 Reusable Skills
-Skills provide modular capabilities:
-- Can be used across multiple agents
-- Independent development and testing
-- Easy maintenance and updates
-- Consistent functionality
+### 🔧 Guided Generation
+The `/venturo-e2e-web:generate` command orchestrates scenario intake, component lookup, MCP-powered selector verification, and spec creation without needing a dedicated agent file.
 
 ### 📈 Performance
-- Smaller, focused agents respond faster
+- Lean documentation keeps prompts concise
 - Reduced context usage for efficiency
-- Parallel execution capabilities
-- Resource optimization
+- Sequential execution avoids flaky overlap during runs
+- Resource optimization through MCP isolation
 
 ## Configuration
 
@@ -130,22 +108,16 @@ Skills provide modular capabilities:
 ```
 venturo-e2e-web/
 ├── .claude-plugin/plugin.json    # Plugin configuration
-├── skills/                       # Modular capabilities
-│   ├── install.md               # Installation management
-│   ├── generate.md              # Test generation
-│   ├── execute.md               # Test execution
-│   └── live-test.md             # Live testing
+├── .gitignore                    # Template .gitignore guidance
+├── .mcp.json                     # MCP server configuration
+├── README.md                     # This documentation
 ├── agents/                       # Specialized agents
-│   ├── installer.md             # Installation specialist
-│   ├── generator.md             # Test generation specialist
-│   ├── runner.md                # Test execution specialist
-│   └── live-tester.md           # Live testing specialist
-├── commands/                     # User interfaces
-│   ├── install.md               # Installation command
-│   ├── generate.md              # Test generation command
-│   ├── run.md                   # Test execution command
-│   └── test.md                  # Live testing command
-└── .mcp.json                    # MCP server configuration
+│   ├── e2e-installer.md         # Installation specialist
+│   └── e2e-test-runner.md       # Execution specialist
+└── commands/                     # User-facing commands
+    ├── generate.md              # Test generation workflow
+    ├── install.md               # Installation command
+    └── run.md                   # Test execution command
 ```
 
 ### Best Practices
@@ -166,7 +138,7 @@ venturo-e2e-web/
 
 ### v2.0.0
 - Complete architecture overhaul
-- Modular skills and specialized agents
+- Guided workflows paired with specialized agents
 - Clean command interfaces
 - Enhanced performance and maintainability
 
@@ -180,7 +152,7 @@ venturo-e2e-web/
 This plugin follows clean architecture principles:
 - Modular design for maintainability
 - Specialized agents for performance
-- Reusable skills for consistency
+- Guided workflows for consistency
 - Clear separation of concerns
 
 ## Support
