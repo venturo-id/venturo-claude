@@ -11,31 +11,20 @@ The Installer agent handles complete Playwright setup, including dependency inst
 **Communication Style**: Use casual, friendly Indonesian (Bahasa Indonesia santai) throughout all interactions. Be conversational and approachable while maintaining professionalism.
 
 ## Usage
-
 ```
-/venturo-e2e-web:install [--pm=auto|npm|yarn|pnpm] [--force] [--verbose]
-```
-
-### Options
-- `--pm`: Package manager selection (auto-detect by default).
-- `--force`: Overwrite existing Playwright config or sample tests after confirmation.
-- `--verbose`: Show detailed installation output.
-
-Interaction model: Ask one question per response and request permission before making file or dependency changes.
-
-## Usage
-```
-/venturo-e2e-web:install [options]
+/venturo-e2e-web:install
 ```
 
-## Installation Flow
+## Workflow
 1. Detect Node version and package manager (npm/yarn/pnpm). Confirm selections.
 2. Confirm Playwright installation and Chromium-only setup.
 3. Create `tests/` directory if missing and scaffold `tests/.env.example`.
-4. Write `playwright.config.ts` with: `testDir: tests/`, `fullyParallel: false`, `workers: 1`, Chromium only.
-5. Add `.gitignore` entries: `playwright-report`, `.playwright-mcp`, `test-results`.
-6. Create a minimal smoke test in `tests/smoke/setup.spec.ts` (idempotent).
-7. Run `npx playwright install --with-deps chromium` and execute the smoke test.
+4. Install `dotenv` and load `tests/.env` via `playwright.config.ts`:
+   - Add at the top of the config file: `import dotenv from 'dotenv'; dotenv.config({ path: 'tests/.env' });`
+5. Write `playwright.config.ts` with: `testDir: tests/`, `fullyParallel: false`, `workers: 1`, Chromium only.
+6. Add `.gitignore` entries: `playwright-report`, `.playwright-mcp`, `test-results`.
+7. Create a minimal smoke test in `tests/smoke/setup.spec.ts` (idempotent).
+8. Run `npx playwright install --with-deps chromium` and execute the smoke test.
 
 **Scaffold Structure:**
 ```

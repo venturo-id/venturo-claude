@@ -11,7 +11,7 @@ A modern, modular E2E testing plugin that leverages specialized agents and guide
 ### 🧩 Automation Flow
 - **Planning** - Guided scenario capture with persistent docs/test-scenario storage
 - **Installation** - Playwright setup, env preparation, and validation test creation
-- **Generation** - Guided scenario collection and spec generation with verified selectors
+- **Generation** - Spec generation from a plan file with MCP-verified selectors
 - **Execution** - Sequenced Playwright runs with reporting and troubleshooting context
 
 ### 🤖 Specialized Agents
@@ -33,8 +33,9 @@ A modern, modular E2E testing plugin that leverages specialized agents and guide
 
 ### 2. Generate Tests
 ```bash
-/venturo-e2e-web:generate manual
-/venturo-e2e-web:generate story --source=./requirements.md
+/venturo-e2e-web:generate --plan=docs/test-scenario/<feature>/<YYYYMMDD>-<feature>-scenario.md
+# optionally restrict by IDs from the plan file
+/venturo-e2e-web:generate --plan=docs/test-scenario/auth/20250314-auth-scenario.md --scenarios=SCN-1,SCN-2
 ```
 
 ### 3. Run Tests
@@ -46,10 +47,10 @@ A modern, modular E2E testing plugin that leverages specialized agents and guide
 ## Features
 
 ### 🚀 Smart Test Generation
-- User story analysis and scenario extraction
-- Application structure analysis for comprehensive coverage
-- Single-file test structure with inline utilities
-- Best practices enforcement backed by verified selectors
+- Plan-driven generation from a single Markdown plan file
+- MCP-powered selector verification before writing code
+- One-scenario-per-file structure for clarity and stability
+- Best practices enforcement with stable selectors and assertions
 
 ### 📊 Guided Execution & Reporting
 - Sequential Playwright execution with clear confirmation steps
@@ -60,6 +61,7 @@ A modern, modular E2E testing plugin that leverages specialized agents and guide
 ### 🧰 Streamlined Installation
 - Opinionated Playwright config (Chromium-only, sequential workers)
 - Automatic `.env.example` scaffolding for critical variables
+- Deterministic env loading via `dotenv` at `playwright.config.ts` (path `tests/.env`)
 - Sample validation test generation for smoke coverage
 - `.gitignore` guidance for Playwright artifacts
 
@@ -73,19 +75,19 @@ A modern, modular E2E testing plugin that leverages specialized agents and guide
 
 ### Installation with Options
 ```bash
-/venturo-e2e-web:install --force --browser=chromium --verbose
+/venturo-e2e-web:install --force --verbose
 ```
 
-### Test Generation Patterns
+### Test Generation
 ```bash
-/venturo-e2e-web:generate story --pattern=single-file
-/venturo-e2e-web:generate story --source=./src/pages --device=mobile
+/venturo-e2e-web:generate --plan=docs/test-scenario/checkout/20250314-checkout-scenario.md
+/venturo-e2e-web:generate --plan=docs/test-scenario/auth/20250314-auth-scenario.md --scenarios=SCN-1
 ```
 
 ### Test Execution Modes
 ```bash
-/venturo-e2e-web:run all --reporter=junit --workers=4
-/venturo-e2e-web:run tests/auth/ --headed --debug
+/venturo-e2e-web:run tests/ --reporter=junit --workers=1
+/venturo-e2e-web:run tests/auth/ --headed --project=chromium
 ```
 
 ## Architecture Benefits
@@ -96,7 +98,7 @@ Each agent specializes in one domain:
 - **Test Runner** manages discovery, execution, and analysis
 
 ### 🔧 Guided Generation
-The `/venturo-e2e-web:generate` command orchestrates scenario intake, component lookup, MCP-powered selector verification, and spec creation without needing a dedicated agent file.
+The `/venturo-e2e-web:generate` command reads a plan file, validates component paths, performs MCP-powered selector verification, and creates spec files (one scenario per file).
 
 ### 📈 Performance
 - Lean documentation keeps prompts concise
@@ -123,12 +125,12 @@ venturo-e2e-web/
 ```
 
 ### Best Practices
-- Use data-testid selectors for stability
-- Implement proper wait strategies
-- Include comprehensive assertions
-- Use single-file test structure with inline utilities
-- Handle test data through environment variables
-- Provide clear test documentation
+- Selector priority: `data-testid` > `getByRole({ name })` > `getByLabel` (for labeled form fields)
+- Avoid `getByText` for dynamic content; avoid XPath; CSS as last resort
+- Implement proper wait strategies (rely on Playwright autowaiting)
+- Include clear, meaningful assertions (at least one per test)
+- One scenario per file, colocated under `tests/<feature>/`
+- Handle test data through environment variables loaded from `tests/.env`
 
 ## Requirements
 
