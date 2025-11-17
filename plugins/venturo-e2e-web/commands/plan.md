@@ -59,6 +59,12 @@ Interaction model: Ask one question per response and wait for explicit approval 
 Untuk setiap item backlog, buka bagian detail:
 1. Goal / Business outcome
 2. Preconditions (auth state, seed data, feature flags)
+   - Auth requirements (opsional, jika butuh login UI):
+     - Login route (mis: `/login`)
+     - Selector field kredensial (email/username, password)
+     - Selector tombol submit
+     - Selector indikator sukses login (mis: `user-menu`)
+     - Env vars yang dibutuhkan: `TEST_USERNAME`, `TEST_PASSWORD`
 3. Test data inputs (env variables, fixtures, API payloads)
 4. Step-by-step interactions (ordered list)
 5. Expected results / assertions (DOM, network, data, metrics)

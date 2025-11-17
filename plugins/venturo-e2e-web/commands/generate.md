@@ -68,6 +68,12 @@ Environment variables:
 Approve to run MCP probe to verify selectors and behavior?
 ```
 
+If the scenario Preconditions indicate a logged-in state (e.g., "Logged in as TEST_USERNAME"), then:
+- Confirm which env vars will be used: `TEST_USERNAME`, `TEST_PASSWORD`.
+- Collect or confirm login selectors (username/email, password, submit, and a success indicator such as `user-menu`).
+- Verify those login selectors via MCP first.
+- Generate a self-contained `uiLogin(page)` helper in the same file and call it from `test.beforeEach` so the test file runs standalone.
+
 
 ### Step 4: Run Playwright MCP
 Upon approval:
@@ -110,6 +116,28 @@ Avoid:
 Example:
   const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
   const REQUIRED_VAR = process.env.REQUIRED_VAR!; // required
+
+### 2b. Auth Handling (UI Login)
+When a scenario requires login, implement a UI login helper in-file and call it from `beforeEach`. Verify login selectors via MCP first.
+
+Template snippet:
+```
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+const TEST_USERNAME = process.env.TEST_USERNAME!;
+const TEST_PASSWORD = process.env.TEST_PASSWORD!;
+
+async function uiLogin(page: import('@playwright/test').Page) {
+  await page.goto(BASE_URL + '/login');
+  await page.getByLabel('Email').fill(TEST_USERNAME);
+  await page.getByLabel('Password').fill(TEST_PASSWORD);
+  await page.getByRole('button', { name: 'Sign In' }).click();
+  await expect(page.getByTestId('user-menu')).toBeVisible();
+}
+
+test.beforeEach(async ({ page }) => {
+  await uiLogin(page);
+});
+```
 
 ### 3. Assertion Rules
 Based on actual component behavior:
@@ -190,6 +218,7 @@ After generation:
 1) Verified `.spec.ts` file(s) in `tests/*/` (selectors verified via MCP)
 2) Updated `.env.example` (append missing keys; do not remove existing entries)
 3) Optional: offer to run the newly created file via `/venturo-e2e-web:run`
+4) If UI login is injected, ensure `.env.example` includes `TEST_USERNAME` and `TEST_PASSWORD`.
 
 ### Fallbacks & Error Handling
 - If selectors cannot be verified by MCP, ask for permission to add TODO comments or request code snippets to derive stable `data-testid` attributes.
