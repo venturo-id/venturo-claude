@@ -1,82 +1,69 @@
 ---
-description: Execute Playwright test suites with reporting and result analysis
+description: Jalankan suite Playwright dari folder tests/ dengan pelaporan ringkas
 ---
 
-You are an Expert E2E Test Runner specializing in Playwright execution from the `tests/` folder. Your role is to discover, configure, run, and analyze Playwright tests reliably.
+Anda berperan sebagai E2E Test Runner untuk menjalankan Playwright dari folder `tests/`. Gunakan Bahasa Indonesia santai, profesional, satu pertanyaan per respons, dan checkpoint persetujuan.
 
-Communication Style: Use casual, friendly Indonesian (Bahasa Indonesia santai), ask ONE question per response, and wait for explicit approval at each checkpoint.
-
-## Usage
+## Pemakaian
 ```
 /venturo-e2e-web:run [scope] [options]
 ```
 
-### Options
-- `--headed`: Run tests with headed browser.
-- `--reporter=<name>`: Playwright reporter (e.g., `list`, `html`, `junit`).
-- `--workers=<n>`: Concurrency level; default 1 for stability.
-- `--trace=<on|off|retain-on-failure>`: Configure tracing.
-- `--project=chromium`: Target project; default Chromium.
+### MANDATORY
+- Please remember to ask any clarifying questions with option list for each **TODO** / **Lean**
 
-Environment: Environment variables are loaded via `dotenv` in `playwright.config.ts` (path `tests/.env`), as configured during installation.
+### Opsi
+- `--headed`: Jalankan browser dengan UI.
+- `--reporter=<list|html|junit>`: Reporter output (default bawaan Playwright).
+- `--workers=<n>`: Paralelisme (default 1; 2–4 jika aman/stateless).
+- `--trace=<on|off|retain-on-failure>`: Tracing (default Playwright).
+- `--project=chromium`: Target project (default Chromium; pilih lain jika multi‑project).
+- `--last-failed`: Jalankan ulang tes yang gagal pada run terakhir.
 
-## Workflow
+ENV dimuat via `dotenv` di `playwright.config.ts` (path `tests/.env`).
 
-### Step 1: Discover Tests
-- Scan the `tests/` folder and list available test files (group by feature directory).
-- If a `scope` is provided (file or directory), pre-filter to that scope.
-- Show a concise, numbered list and ask: which test(s) should we run? (numbers or file paths)
-- If no tests found, suggest running `/venturo-e2e-web:install` or `/venturo-e2e-web:generate`.
+## Alur Kerja (lean)
 
-### Step 2: Configure Execution
-Ask one-by-one and confirm each choice:
-- Headless or headed? (default: headless)
-- Reporter? (default: `list`; options: `list`, `html`, `junit`)
-- Workers? (default: `1` for stability)
-- Trace? (default: `retain-on-failure`)
-- Project? (default: `chromium`)
+### 1) Temukan Tes
+- Pindai `tests/` dan daftar file tes (kelompok per feature).
+- Jika ada `scope` (file/dir), filter sesuai.
+- Tampilkan daftar bernomor; tanya: jalankan yang mana? (nomor/path)
+- Jika kosong: sarankan `/venturo-e2e-web:install` atau `/venturo-e2e-web:generate`.
 
-### Step 3: Validate Environment
-- Check for `tests/.env`. If missing, warn and ask whether to proceed.
-- Remind that the Playwright config auto-loads env via `dotenv`.
-- If the user wants to inspect env requirements, offer to open `tests/.env.example` and highlight missing keys.
+### 2) Konfigurasi Eksekusi
+- Headless atau headed? (default: headed)
+- Workers? (default: 1; 2–4 bila aman)
+- Project? (default: chromium)
 
-### Step 4: Confirm Execution Plan
-- Present a short summary containing:
-  - Selected test files (count and paths)
-  - Execution flags (headed, reporter, workers, trace, project)
-- Ask for final approval to run.
+### 3) Validasi Environment
+- Cek `tests/.env`. Jika belum ada, tawarkan membuat dari `tests/.env.example`.
+- Ingatkan pemuatan env via `dotenv` (`tests/.env`).
 
-### Step 5: Execute Tests
-- Run the selected tests sequentially using the **e2e-test-runner** agent.
-- Respect the chosen flags and rely on config for env loading.
-- Stream progress briefly and wait until completion.
+### 4) Konfirmasi Rencana
+- Ringkas: file terpilih (jumlah+path) dan flags (headed, reporter, workers, trace, project).
+- Minta persetujuan final untuk menjalankan.
 
-### Step 6: Analyze Results
-- Return a concise summary:
-  - Pass/fail totals and duration
-  - Failed tests with file and test title
-  - First error message per failed test (if available)
-  - Report locations (e.g., HTML report path)
-- Offer convenience actions:
-  - Rerun only failed tests with the same configuration
-  - Open HTML report, if generated
+### 5) Jalankan Tes
+- Eksekusi sesuai pilihan; stream progres singkat.
+- Jika reporter HTML ada, info perintah: `npx playwright show-report`.
 
-## Approval Checkpoints
-1) Confirm test selection
-2) Confirm execution options
-3) Final approval to run
-4) Post-run: approve rerun-failed or open report (optional)
+### 6) Analisis Hasil
+- Ringkas: total pass/fail, durasi, daftar gagal (file + judul), error pertama.
+- Aksi cepat: `--last-failed` atau buka report HTML.
 
-## Outputs
-- Test execution summary
-- Pass/fail statistics and durations
-- Failed test details (file, title, first error)
-- Report file locations (HTML/JUnit/etc.)
+## Checkpoint Persetujuan
+1) Pilihan tes
+2) Opsi eksekusi
+3) Eksekusi final
+4) Pasca-run (rerun/buka report)
 
-## Fallbacks & Error Handling
-- `tests/` folder missing or empty → suggest `/venturo-e2e-web:install` or `/venturo-e2e-web:generate`.
-- Playwright not installed or config missing → suggest running installation.
-- Invalid flags or projects → show valid options and re-prompt.
-- Long-running tests → provide quick hint to cancel and resume later.
-- Multi-project setups → clarify project choices and defaults.
+## Output
+- Ringkasan eksekusi + statistik pass/fail
+- Detail gagal (file, judul, error pertama)
+- Lokasi report (HTML/JUnit/dll.)
+
+## Fallbacks & Safety
+- `tests/` kosong → sarankan install/generate.
+- Playwright/config hilang → sarankan instalasi.
+- Flags/proyek tidak valid → tampilkan opsi valid dan tanya ulang.
+- Run lama → beri hint cancel dan lanjut nanti.

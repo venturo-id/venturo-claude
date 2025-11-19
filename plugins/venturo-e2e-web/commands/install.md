@@ -1,50 +1,114 @@
+description: Lean untuk memasang & mengonfigurasi Playwright (Chromium-only), scaffold tests/, ENV, config, izin MCP — selaras dengan plan-v2 & generate.md
 ---
-description: Install and configure Playwright with dependencies and browsers
----
 
-# Playwright Installation
+Anda berperan sebagai e2e-installer yang menyiapkan Playwright dan lingkungan uji. Gunakan Bahasa Indonesia santai, satu pertanyaan per respons, dan checkpoint persetujuan.
 
-**Use the e2e-installer agent to install Playwright and configure test environment.**
-
-The Installer agent handles complete Playwright setup, including dependency installation, browser binary downloads, and configuration.
-
-**Communication Style**: Use casual, friendly Indonesian (Bahasa Indonesia santai) throughout all interactions. Be conversational and approachable while maintaining professionalism.
-
-## Usage
+## Pemakaian
 ```
 /venturo-e2e-web:install
 ```
 
-## Workflow
-1. Detect Node version and package manager (npm/yarn/pnpm). Confirm selections.
-2. Confirm Playwright installation and Chromium-only setup.
-3. Create `tests/` directory if missing and scaffold `tests/.env.example`.
-4. Install `dotenv` and load `tests/.env` via `playwright.config.ts`:
-   - Add at the top of the config file: `import dotenv from 'dotenv'; dotenv.config({ path: 'tests/.env' });`
-5. Write `playwright.config.ts` with: `testDir: tests/`, `fullyParallel: false`, `workers: 1`, Chromium only.
-6. Add `.gitignore` entries: `playwright-report`, `.playwright-mcp`, `test-results`.
-7. Create a minimal smoke test in `tests/smoke/setup.spec.ts` (idempotent).
-8. Run `npx playwright install --with-deps chromium` and execute the smoke test.
+### MANDATORY
+- Please remember to ask any clarifying questions with option list for each **TODO** / **Lean**
 
-**Scaffold Structure:**
+## Alur Kerja (lean)
+
+### A. Deteksi & Persiapan
+- Deteksi Node.js dan package manager (npm/yarn/pnpm); konfirmasi pilihan. Minimal Node 18+ disarankan.
+
+### B. Instalasi Playwright
+- Pasang Playwright dan browser Chromium:
+  - `npx playwright install --with-deps chromium`
+- Jika Playwright sudah terpasang, konfirmasi untuk skip atau reinstall.
+
+### C. Struktur Proyek & Konfigurasi
+- Buat folder `tests/` bila belum ada.
+- Buat/merge `tests/.env.example` (append-only; jangan hapus entri yang ada).
+- Tambahkan/merge `.gitignore` dengan entri:
+  - `playwright-report`
+  - `blob-report`
+  - `test-results`
+  - `.playwright-mcp`
+  - `tests/.env`
+- Siapkan `playwright.config.ts` minimal (tanya overwrite/merge bila sudah ada):
+```ts
+import { defineConfig } from '@playwright/test';
+import dotenv from 'dotenv';
+dotenv.config({ path: 'tests/.env' });
+
+export default defineConfig({
+  testDir: 'tests',
+  fullyParallel: false,
+  workers: 1,
+  launchOptions: process.env.CI ? {} : {
+    slowMo: 800,
+  },
+  actionTimeout: 15000,
+  navigationTimeout: 30000,
+  use: { baseURL: process.env.BASE_URL || 'http://localhost:3000' },
+  projects: [
+    { name: 'chromium', use: { browserName: 'chromium' } },
+  ],
+});
 ```
-tests/
-├── .env.example              # Template for required vars
-├── smoke/
-│   └── setup.spec.ts         # Sample smoke test
 
-Related documentation structure (created by /venturo-e2e-web:plan):
-docs/
-└── test-scenario/
-    └── <feature>/
-        └── <YYYYMMDD>-<feature>-scenario.md
+### D. ENV Template (selaras generate.md)
+- Buat/append `tests/.env.example` dengan placeholder aman:
+```env
+# Base Configuration
+BASE_URL=http://localhost:3000
+
+# Authentication (placeholder; jangan kredensial asli)
+AUTH_EMAIL=you@example.com
+AUTH_PASSWORD=your-password
+```
+- Kebijakan: Jangan commit kredensial asli; gunakan `.env` lokal untuk nilai nyata.
+
+### E. Izin MCP & Server
+- Pastikan `.claude/settings.local.json` mengizinkan Playwright MCP:
+```json
+{
+  "permissions": {
+    "allow": [
+      "mcp__plugin_venturo-e2e-web_playwright",
+      "mcp__playwright"
+    ]
+  }
+}
+```
+- Verifikasi `.mcp.json` memiliki server `playwright` (buat jika belum ada). Contoh minimal:
+```json
+{
+  "mcpServers": {
+    "playwright": { "command": "playwright-mcp" }
+  }
+}
 ```
 
-## Outputs
-- Confirmed dependencies installed
-- Config and env template created
-- Smoke test executed with result summary and report path
+### F. Smoke Test (idempotent)
+- Buat `tests/smoke/setup.spec.ts` bila belum ada:
+```ts
+import { test, expect } from '@playwright/test';
+
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
+
+test('smoke: app loads base URL', async ({ page }) => {
+  await page.goto(BASE_URL);
+  await expect(page).toHaveURL(/http/);
+});
+```
+- Opsi jalankan: `npx playwright test tests/smoke/setup.spec.ts`
+
+## Output
+- Playwright terpasang (Chromium-only) dan dapat dijalankan.
+- `tests/`, `.env.example`, `playwright.config.ts`, dan smoke test tersedia.
+- `.gitignore` dan izin MCP diperbarui.
 
 ## Fallbacks & Safety
-- If Playwright or config already exists, ask whether to keep, merge, or overwrite.
-- If `tests/.env.example` exists, append missing keys without removing existing content.
+- Jika config/file sudah ada: tawarkan keep/merge/overwrite (default: merge aman).
+- `.env.example` selalu append-only, tidak menghapus entri eksisting.
+- Validasi JSON sebelum menulis `.claude/settings.local.json` dan `.mcp.json`.
+
+## Catatan Integrasi
+- Selaras dengan `plan-v2` dan `generate.md` (ENV: `BASE_URL`, `AUTH_EMAIL`, `AUTH_PASSWORD`).
+- Setelah instalasi, rencana skenario dapat dibuat via `/venturo-e2e-web:plan` dan digenerate via `/venturo-e2e-web:generate`.
