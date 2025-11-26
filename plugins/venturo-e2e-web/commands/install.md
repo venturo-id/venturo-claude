@@ -1,7 +1,7 @@
 ---
-description: Perintah untuk memasang & mengonfigurasi Playwright (Chromium-only), scaffold tests/, .env, config, izin MCP — selaras dengan plan.md, probe.md & generate.md
+description: Command to install & configure Playwright (Chromium-only), scaffold tests/, .env, config, MCP permissions — aligned with plan.md, probe.md & generate.md
 ---
 
-## Task 
-1) Informasi kepada user jika kamu akan membantu untuk install dan konfigurasi playwright di project user.
-2) Delegate task kepada agent `e2e-installer`
+## Task
+1) Inform the user that you will help install and configure Playwright in the user's project.
+2) Delegate the task to the `e2e-installer` agent.
