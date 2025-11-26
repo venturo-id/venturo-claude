@@ -85,8 +85,7 @@ AUTH_PASSWORD=your-password
 {
   "permissions": {
     "allow": [
-      "mcp__plugin_venturo-e2e-web_playwright",
-      "mcp__playwright"
+      "mcp__playwright-e2e"
     ]
   }
 }
@@ -95,7 +94,7 @@ AUTH_PASSWORD=your-password
 ```json
 {
   "mcpServers": {
-     "playwright": {
+     "playwright-e2e": {
        "type": "stdio",
        "command": "npx",
        "args": [
