@@ -56,10 +56,10 @@ Precondition
 1) Retrieve the base URL and credentials from `tests/.env`.
 
 # Workflow Generate Test File
-1) Snapshot all of success action (example: button click, fill the form, etc) and generate a Playwright `test.step()` for each.
-2) Use playwright `evaluate` tool get list of possible semantic HTML with the attribute that can be use as selector (example: `Array.from(document.querySelectorAll('input')).map(input => ({ name: input.name, placeholder: input.placeholder, type: input.type, id: input.id }))`).
+1) Execute tools `start_codegen_session`
+2) Snapshot all of success action (example: button click, fill the form, etc) and generate a Playwright `test.step()` for each.
 3) Run the E2E test scenario to complete all point on **Expected Results**.
-4) Execute `close` browser playwright
+4) After all test scenario is complete, Execute tools `end_codegen_session` and `close` to end codegen session and close playwright browser
 5) Rename generated test file to use OUR RULES
 6) Open the generated file and add the snapshot results that you worked on to complete all the steps and assertions to complete the **Expected Results**..
 7) Modify it according to OUR RULES.
@@ -112,7 +112,7 @@ test.describe('SCN-1: User Management - View Users List', () => {
 ```
 
 ## Selector Rules
-1) Do NOT make assumptions about selectors.
+1) Do NOT make assumptions about selectors, You must read codebase that relate with context / scenario
 2) Do NOT use `getByLabel`.
 3) Do NOT use `getByText`.
 4) Use semantic HTML elements such as `button`, `input`, `textarea`, `select`, `table`, `td`, `tr`, `th` and etc.
