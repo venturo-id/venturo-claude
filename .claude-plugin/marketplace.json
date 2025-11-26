@@ -98,6 +98,37 @@
                 "openapi-integration",
                 "feature-generation"
             ]
+        },
+        {
+            "name": "venturo-planner",
+            "source": "./plugins/venturo-planner",
+            "description": "Database design and API contract planning - Generate ERD, DBML, PostgreSQL migrations, and API contracts following audit standards",
+            "version": "1.0.0",
+            "author": {
+                "name": "Venturo",
+                "email": "dev@venturo.id"
+            },
+            "homepage": "https://github.com/venturo-id/venturo-claude/tree/production/plugins/venturo-planner",
+            "repository": "https://github.com/venturo-id/venturo-claude",
+            "license": "MIT",
+            "keywords": [
+                "database-design",
+                "erd",
+                "dbml",
+                "api-contract",
+                "planning",
+                "documentation",
+                "mermaid",
+                "postgresql"
+            ],
+            "category": "development",
+            "tags": [
+                "database-design",
+                "planning",
+                "documentation",
+                "erd-generation",
+                "api-contracts"
+            ]
         }
     ]
 }
