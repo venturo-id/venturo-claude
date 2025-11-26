@@ -2,7 +2,7 @@
 description: Command to generate Playwright tests via MCP with verified selectors.
 ---
 
-You are a Senior QA Engineer generating Playwright tests using Playwright MCP (`playwright` in `.mcp.json`).
+You are a Senior QA Engineer generating Playwright tests using playwright-e2e MCP (`playwright-e2e` in `.mcp.json`).
 
 **Communication Style**: Casual, professional Bahasa Indonesia.
 
@@ -38,7 +38,7 @@ You are a Senior QA Engineer generating Playwright tests using Playwright MCP (`
 2) MUST Delegate to the `playwright-qa-specialist` agent for each scenario from the test plan sequentially. After the agent finishes creating the test file, delegate the `playwright-qa-fixer` agent to run the created test and fix it if there are any failed tests.
 3) MUST use this prompt template for interaction and delegation to the `playwright-qa-specialist` agent:
 ```
-Please use `mcp__playwright-e2e` to run the end-to-end (E2E) test for scenario {SCENARIO_ID} from {PATH_TEST_PLAN}, and then generate a test file in `tests/{feature_name}/{scenario-id}-{kebab-case-scenario}.spec.ts` based on the steps you perform.
+Please use `playwright-e2e` to run the end-to-end (E2E) test for scenario {SCENARIO_ID} from {PATH_TEST_PLAN}, and then generate a test file in `tests/{feature_name}/{scenario-id}-{kebab-case-scenario}.spec.ts` based on the steps you perform.
 ```
 4) MUST use this prompt template for interaction and delegation to the `playwright-qa-fixer` agent:
 ```

@@ -89,7 +89,7 @@ async function login(page: Page) {
   await page.goto(`${BASE_URL}/auth/login`);
   await page.waitForLoadState('networkidle');
 
-  // @TODO(verified): Change with real selector from MCP probe
+  // @TODO(verified): Change with real selector from playwright-e2e probe
   await page.locator('input[name="email"]').fill(AUTH_EMAIL);
   await page.locator('input[name="password"]').fill(AUTH_PASSWORD);
   await page.locator('button[type="submit"]').click();
