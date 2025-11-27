@@ -1,0 +1,18 @@
+{
+  "name": "venturo-planner",
+  "version": "1.0.0",
+  "description": "Database design and API contract planning tool - Generate ERD, DBML, and API contracts following audit standards",
+  "author": {
+    "name": "Venturo",
+    "email": "dev@venturo.id"
+  },
+  "license": "MIT",
+  "keywords": [
+    "database-design",
+    "erd",
+    "dbml",
+    "api-contract",
+    "planning",
+    "documentation"
+  ]
+}
