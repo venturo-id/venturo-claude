@@ -1,164 +1,392 @@
-# venturo-e2e-web
+# Venturo E2E Web Plugin
 
-Clean Playwright E2E testing automation with guided workflows and specialized agents for comprehensive web application testing.
+Clean Playwright E2E testing automation with modular skills and specialized agents for comprehensive web application testing.
 
-## Overview
+## 📋 Overview
 
-A modern, modular E2E testing plugin that leverages specialized agents and guided workflows to provide comprehensive Playwright testing capabilities.
+Venturo E2E Web is a Claude plugin that provides a complete end-to-end testing workflow using Playwright. It helps you install, plan, generate, and run automated tests for your web applications with minimal manual configuration.
 
-## Architecture
+## ✨ Key Features
 
-### 🧩 Automation Flow
-- **Planning** - Guided scenario capture with persistent docs/test-scenario storage
-- **Installation** - Playwright setup, env preparation, and validation test creation
-- **Generation** - Spec generation from a plan file with MCP-verified selectors
-- **Execution** - Sequenced Playwright runs with reporting and troubleshooting context
+- **Automated Installation**: One-command setup for Playwright with Chromium browser
+- **Test Planning**: Interactive test scenario planning with structured documentation
+- **Smart Code Generation**: AI-powered test code generation from test plans
+- **Intelligent Test Runner**: Advanced test execution with automatic application validation
+- **Quality Assurance**: Built-in lint checking and automated test fixing
+- **Modular Architecture**: Specialized agents and reusable skills for efficient workflows
 
-### 🤖 Specialized Agents
-- **Installer** - Playwright installation and configuration specialist (`agents/e2e-installer.md`)
-- **Test Runner** - Test execution and result analysis specialist (`agents/e2e-test-runner.md`)
+## 🚀 Commands
 
-### 📋 Clean Commands
-- **Plan** - Capture scenario backlog collaboratively and store it in `docs/test-scenario`
-- **Install** - Set up Playwright with dependencies and browsers
-- **Generate** - Create E2E tests from scenarios and application analysis
-- **Run** - Execute test suites with comprehensive reporting
+### `/venturo-e2e-web:install`
 
-## Quick Start
+Install and configure Playwright in your project with minimal setup.
 
-### 1. Installation
-```bash
+**Features:**
+- Installs Playwright with Chromium browser only
+- Creates `tests/` directory structure
+- Generates `.env` configuration file
+- Sets up `playwright.config.ts`
+- Configures MCP server permissions
+
+**Usage:**
+```
 /venturo-e2e-web:install
 ```
 
-### 2. Generate Tests
-```bash
-/venturo-e2e-web:generate --plan=docs/test-scenario/<feature>/<YYYYMMDD>-<feature>-scenario.md
-# optionally restrict by IDs from the plan file
-/venturo-e2e-web:generate --plan=docs/test-scenario/auth/20250314-auth-scenario.md --scenarios=SCN-1,SCN-2
+---
+
+### `/venturo-e2e-web:plan`
+
+Create structured test plans for your features with AI assistance.
+
+**Features:**
+- Interactive feature exploration with codebase analysis
+- Automatic component and route discovery
+- Smart selector collection using `data-testid`
+- Generates 3-7 test scenarios per feature
+- Saves plans in `docs/test-plan/<feature>/` directory
+
+**Workflow:**
+1. Specify the feature name and path
+2. Agent explores codebase for components, routes, and UI elements
+3. Proposes candidate test scenarios
+4. Collects accurate selectors for each UI element
+5. Generates structured markdown test plans
+
+**Output Format:**
+```
+docs/test-plan/<feature-slug>/<YYYYMMDD>-<ID>-<feature-slug>.md
 ```
 
-### 3. Run Tests
-```bash
-/venturo-e2e-web:run all
-/venturo-e2e-web:run tests/auth/ --project=chromium
+**Usage:**
+```
+/venturo-e2e-web:plan
 ```
 
-## Features
+---
 
-### 🚀 Smart Test Generation
-- Plan-driven generation from a single Markdown plan file
-- MCP-powered selector verification before writing code
-- One-scenario-per-file structure for clarity and stability
-- Best practices enforcement with stable selectors and assertions
+### `/venturo-e2e-web:generate`
 
-### 📊 Guided Execution & Reporting
-- Sequential Playwright execution with clear confirmation steps
-- HTML report references and summarized pass/fail metrics
-- Failure analysis with debugging information
-- Optional configuration for reporters, workers, and projects
+Generate Playwright test code from test plan markdown files.
 
-### 🧰 Streamlined Installation
-- Opinionated Playwright config (Chromium-only, sequential workers)
-- Automatic `.env.example` scaffolding for critical variables
-- Deterministic env loading via `dotenv` at `playwright.config.ts` (path `tests/.env`)
-- Sample validation test generation for smoke coverage
-- `.gitignore` guidance for Playwright artifacts
+**Features:**
+- Supports both folder and single file generation
+- Automatically parses test plan markdown
+- Uses AI-powered QA specialist for code generation
+- Includes automatic test fixing and validation
+- Runs ESLint auto-fix on generated files
 
-### ⚡ Performance Optimized
-- Specialized agents for focused functionality
-- Lean workflows to reduce context usage
-- Efficient resource management during MCP runs
-- Clear separation between installation, generation, and execution responsibilities
+**Operation Modes:**
 
-## Usage Examples
-
-### Installation with Options
-```bash
-/venturo-e2e-web:install --force --verbose
+**Mode A: Generate from Folder**
 ```
+/venturo-e2e-web:generate
+Input: docs/test-plan/user-management/
+```
+
+**Mode B: Generate from File**
+```
+/venturo-e2e-web:generate
+Input: docs/test-plan/user-management/20250127-SCN-001-create-user.md
+```
+
+**Generation Process:**
+1. Validates environment variables (`BASE_URL`, `AUTH_EMAIL`, `AUTH_PASSWORD`)
+2. Ensures application is running
+3. Parses test plan content
+4. Delegates to `playwright-qa-specialist` agent
+5. Runs tests and fixes failures automatically
+6. Applies linting for code quality
+
+**Output:**
+```
+tests/<feature>/<scenario-id>-<kebab-case-title>.spec.ts
+```
+
+---
+
+### `/venturo-e2e-web:run`
+
+Execute Playwright tests with intelligent application validation.
+
+**Features:**
+- Automatic `BASE_URL` accessibility check
+- Auto-starts application if needed
+- Smart test file selection
+- Multiple reporter options (list, HTML, JUnit)
+- Configurable execution options
+
+**Execution Options:**
+- `--headed`: Run with browser UI visible
+- `--reporter=<list|html|junit>`: Choose output format
+- `--workers=<n>`: Set parallelism level
+
+**Workflow:**
+1. Validates `BASE_URL` accessibility
+2. Auto-starts application if unreachable
+3. Scans and lists available tests
+4. Configures execution options
+5. Runs tests with progress tracking
+6. Provides detailed results and failure analysis
+
+**Usage:**
+```
+/venturo-e2e-web:run
+```
+
+---
+
+## 🤖 Specialized Agents
+
+### `codebase-explorer`
+Analyzes your codebase to gather context about components, routes, forms, and API endpoints. Used during test planning phase.
+
+### `e2e-installer`
+Handles Playwright installation and project configuration setup.
+
+### `playwright-qa-specialist`
+Senior QA Engineer agent that generates robust, maintainable Playwright test code following best practices.
+
+### `playwright-qa-fixer`
+Automatically runs generated tests and fixes any failures to ensure 100% test pass rate.
+
+### `e2e-test-runner`
+Manages test execution with intelligent validation and reporting.
+
+---
+
+## 🛠️ Skills
+
+### `collect-selector`
+**Purpose:** Determines the correct `data-testid` selector for UI components.
+
+**Priority Rules:**
+1. `playwrightId` attribute/prop
+2. `data-testid` attribute/prop
+3. `name` attribute/prop
+4. `label` attribute/prop
+5. `aria-label` attribute/prop
+6. Text content of child elements
+
+**Output:** Returns the resolved selector string or `"undefined-testid"` if none found.
+
+---
+
+### `plan-document`
+**Purpose:** Generates structured test plan markdown documents.
+
+**Features:**
+- Follows standardized test plan template
+- Ensures all UI actions reference `data-testid`
+- Includes scenario details, preconditions, test data
+- Structured steps and expected results
+
+**Template Structure:**
+- Scenario Code (SCN-XXX)
+- Feature and Scenario Title
+- Environment Configuration
+- Context and Goals
+- Component Path and Route
+- Test Data and Steps
+- Expected Results and Notes
+
+---
+
+### `test-file`
+**Purpose:** Creates independent, production-ready Playwright test files.
+
+**Key Rules:**
+- No external helper files (self-contained tests)
+- Uses `page.waitForLoadState('networkidle')` for async operations
+- Adds 500ms wait after click actions
+- Generates dynamic mock data
+- Includes inline login helper
+- Uses semantic HTML selectors
+
+**Test Structure:**
+```typescript
+import { test, expect, type Page } from '@playwright/test';
+
+// Environment variables
+const BASE_URL = process.env.BASE_URL;
+const AUTH_EMAIL = process.env.AUTH_EMAIL;
+const AUTH_PASSWORD = process.env.AUTH_PASSWORD;
+
+// Mock data generator
+function mockData() { ... }
+
+// Inline login helper
+async function login(page: Page) { ... }
+
+// Test suite
+test.describe('SCN-XXX: Feature - Scenario', () => {
+  test('should perform action', async ({ page }) => {
+    await login(page);
+    await test.step('step description', async () => {
+      // Test logic
+    });
+  });
+});
+```
+
+---
+
+## 📁 Project Structure
+
+After setup, your project will have:
+
+```
+project-root/
+├── tests/
+│   ├── .env                    # Environment variables
+│   ├── .env.example           # Environment template
+│   └── <feature>/             # Feature test files
+│       └── *.spec.ts
+├── docs/
+│   └── test-plan/
+│       └── <feature>/         # Test plan documents
+│           └── YYYYMMDD-SCN-XXX-<scenario>.md
+└── playwright.config.ts       # Playwright configuration
+```
+
+---
+
+## 🔧 Configuration
+
+### Environment Variables (`tests/.env`)
+
+Required variables:
+```env
+BASE_URL=http://localhost:5173
+AUTH_EMAIL=user@example.com
+AUTH_PASSWORD=YourPassword123
+```
+
+### Playwright Config
+
+The plugin generates a `playwright.config.ts` with sensible defaults:
+- Chromium browser only
+- Network idle wait strategy
+- Screenshot on failure
+- HTML reporter
+- Trace on first retry
+
+---
+
+## 🎯 Best Practices
+
+### Test Planning
+1. Start with clear feature identification
+2. Use codebase explorer to understand structure
+3. Create 3-7 scenarios per feature
+4. Ensure all UI elements have proper selectors
 
 ### Test Generation
+1. Always validate environment setup first
+2. Generate from complete test plans
+3. Let agents handle selector resolution
+4. Review and run generated tests immediately
+
+### Test Execution
+1. Ensure application is running and accessible
+2. Use headed mode during development
+3. Run with HTML reporter for detailed debugging
+4. Fix failures incrementally
+
+### Code Quality
+1. Let ESLint auto-fix handle formatting
+2. Keep tests independent and self-contained
+3. Use descriptive scenario IDs and titles
+4. Maintain test data in environment variables
+
+---
+
+## 📝 Example Workflow
+
+**Complete E2E Testing Workflow:**
+
 ```bash
-/venturo-e2e-web:generate --plan=docs/test-scenario/checkout/20250314-checkout-scenario.md
-/venturo-e2e-web:generate --plan=docs/test-scenario/auth/20250314-auth-scenario.md --scenarios=SCN-1
+# 1. Install Playwright
+/venturo-e2e-web:install
+
+# 2. Plan test scenarios
+/venturo-e2e-web:plan
+# Feature: User Management
+# Path: src/features/user
+
+# 3. Generate test code
+/venturo-e2e-web:generate
+# Input: docs/test-plan/user-management/
+
+# 4. Run tests
+/venturo-e2e-web:run
+# Select: All tests in user-management
+# Mode: Headed with HTML reporter
+
+# 5. View results
+npx playwright show-report
 ```
 
-### Test Execution Modes
-```bash
-/venturo-e2e-web:run tests/ --reporter=junit --workers=1
-/venturo-e2e-web:run tests/auth/ --headed --project=chromium
-```
+---
 
-## Architecture Benefits
+## 🐛 Troubleshooting
 
-### 🎯 Focused Agents
-Each agent specializes in one domain:
-- **Installer** handles installation, env setup, and smoke validation
-- **Test Runner** manages discovery, execution, and analysis
+### Application Not Accessible
+- Check `BASE_URL` in `tests/.env`
+- Ensure dev server is running
+- Verify port availability
+- Check network/firewall settings
 
-### 🔧 Guided Generation
-The `/venturo-e2e-web:generate` command reads a plan file, validates component paths, performs MCP-powered selector verification, and creates spec files (one scenario per file).
+### Selector Issues
+- Verify `data-testid` attributes exist
+- Use `collect-selector` skill to validate
+- Check component props and attributes
+- Use browser DevTools to inspect elements
 
-### 📈 Performance
-- Lean documentation keeps prompts concise
-- Reduced context usage for efficiency
-- Sequential execution avoids flaky overlap during runs
-- Resource optimization through MCP isolation
+### Test Failures
+- Run with `--headed` flag to observe
+- Check `playwright-report/` for details
+- Review trace files for debugging
+- Use `playwright-qa-fixer` agent for auto-fixes
 
-## Configuration
+### Lint Errors
+- Ensure ESLint is configured
+- Run manual fix: `npx eslint <file> --fix`
+- Check ESLint config compatibility
+- Review generated code patterns
 
-### Plugin Structure
-```
-venturo-e2e-web/
-├── .claude-plugin/plugin.json    # Plugin configuration
-├── .gitignore                    # Template .gitignore guidance
-├── .mcp.json                     # MCP server configuration
-├── README.md                     # This documentation
-├── agents/                       # Specialized agents
-│   ├── e2e-installer.md         # Installation specialist
-│   └── e2e-test-runner.md       # Execution specialist
-└── commands/                     # User-facing commands
-    ├── generate.md              # Test generation workflow
-    ├── install.md               # Installation command
-    └── run.md                   # Test execution command
-```
+---
 
-### Best Practices
-- Selector priority: `data-testid` > `getByRole({ name })` > `getByLabel` (for labeled form fields)
-- Avoid `getByText` for dynamic content; avoid XPath; CSS as last resort
-- Implement proper wait strategies (rely on Playwright autowaiting)
-- Include clear, meaningful assertions (at least one per test)
-- One scenario per file, colocated under `tests/<feature>/`
-- Handle test data through environment variables loaded from `tests/.env`
+## 📦 Version
 
-## Requirements
+**Current Version:** 1.0.2
 
-- Node.js and npm/yarn
-- Modern web browser
-- Claude Code with MCP support
+---
 
-## Version History
+## 📄 License
 
-### v2.0.0
-- Complete architecture overhaul
-- Guided workflows paired with specialized agents
-- Clean command interfaces
-- Enhanced performance and maintainability
+MIT License
 
-### v1.0.0
-- Initial monolithic implementation
-- Basic Playwright integration
-- Single agent approach
+---
 
-## Contributing
+## 👥 Author
 
-This plugin follows clean architecture principles:
-- Modular design for maintainability
-- Specialized agents for performance
-- Guided workflows for consistency
-- Clear separation of concerns
+**Venturo**
+- Email: info@venturo.com
+- Website: [venturo.com](https://venturo.com)
 
-## Support
+---
 
-For issues and feature requests, refer to the comprehensive documentation in the `docs/` directory or check the command help for detailed usage information.
+## 🏷️ Keywords
+
+`playwright` · `e2e` · `testing` · `automation` · `qa` · `web-testing` · `test-automation` · `ai-assisted-testing`
+
+---
+
+## 🤝 Support
+
+For issues, questions, or contributions, please contact Venturo at info@venturo.com.
+
+---
+
+**Happy Testing! 🚀**

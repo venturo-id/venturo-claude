@@ -57,6 +57,78 @@ export default defineConfig({
   ],
 });
 ```
+6) Prepare minimal eslint config
+```
+import js from '@eslint/js';
+import typescript from '@typescript-eslint/eslint-plugin';
+import tsParser from '@typescript-eslint/parser';
+import globals from 'globals';
+
+export default [
+  js.configs.recommended,
+  {
+    files: ['**/*.ts', '**/*.spec.ts'],
+    languageOptions: {
+      parser: tsParser,
+      ecmaVersion: 2020,
+      sourceType: 'module',
+      globals: {
+        ...globals.node,
+        // Playwright test globals
+        test: 'readonly',
+        expect: 'readonly',
+        describe: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        // Playwright-specific
+        page: 'readonly',
+        browser: 'readonly',
+        browserName: 'readonly',
+        context: 'readonly',
+        request: 'readonly',
+      },
+      parserOptions: {
+        ecmaFeatures: {
+          jsx: false,
+        },
+      },
+    },
+    plugins: {
+      '@typescript-eslint': typescript,
+    },
+    rules: {
+      ...typescript.configs.recommended.rules,
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+        },
+      ],
+      // Allow test-specific patterns
+      '@typescript-eslint/no-empty-function': 'off',
+      '@typescript-eslint/no-non-null-assertion': 'warn',
+      'prefer-const': 'warn',
+      'no-console': 'off', // Allow console.log in tests for debugging
+    },
+  },
+  {
+    files: ['setup.ts', 'global-setup.ts'],
+    languageOptions: {
+      parser: tsParser,
+      globals: {
+        ...globals.node,
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+];
+```
 
 ### C.1. ESLint Configuration for the `tests/` Folder
 1. Detect if the project is already using ESLint (check for `eslint.config.*` or the `eslint` dependency in `package.json`).

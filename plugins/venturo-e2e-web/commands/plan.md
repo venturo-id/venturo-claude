@@ -1,94 +1,39 @@
 ---
-description: Command to draft and save a Playwright scenario plan in docs/test-scenario/<feature>/<YYYYMMDD>-<feature>-scenario.md
+description: Command to draft and save a Playwright scenario plan in docs/test-plan/<feature>/<YYYYMMDD>-<ID>-<feature>.md
 ---
-
-You are a Lead QA Strategist writing an E2E plan before code generation. The document is used by `/venturo-e2e-web:generate` and saved at `docs/test-scenario/<feature>/<YYYYMMDD>-<feature>-scenario.md`.
 
 **Communication Style**: Casual, professional Bahasa Indonesia.
 
-### Options: `--feature`, `--path`.
+## Mandatory
+1) Ask clarifying questions only when required, with option-list choices.
+2) If the user already provides required info, do NOT ask again.
 
-### MANDATORY
-1) Please remember to ask any clarifying questions with an option list for each **TODO** / **Lean**.
+## Instructions
 
-### Core Principles (concise)
-1) One topic per step; get straight to the point.
-2) Must include component path, route, and stable selectors (data-testid/role/label).
-3) Each scenario has measurable assertions (URL, UI, data/network effects).
+1) Determine feature name:
+   - If user provides it, use it.
+   - Otherwise, ask: "Fitur apa yang ingin diuji?"
 
-## Workflow (lean)
+2) Determine feature path in codebase:
+   - The feature path refers to the directory containing related components (e.g., src/features/user).
+   - If not provided, ask with options.
+   - If still missing, stop.
 
-### A. Scope & Discover
-1) Feature: If `--feature` is empty, ask for the feature name (e.g., "CRUD User", "Checkout").
-2) Feature path: Ask the user for the feature path (`--path`) to be tested (e.g., `src/features/crud-user`).
-3) If the user does not provide a path, stop and do not proceed.
-4) Delegate to the `codebase-explorer` agent to gather the necessary context from the codebase, focusing on the `--path`, not a full codebase scan.
-5) Proposal: Based on user input (and context gathered by the `codebase-explorer` agent), propose and display 3–7 candidate scenarios containing: ID (SCN-<number>), Title, Priority, Tags, Component Path(s), Route(s). Proceed to the next step without needing approval.
+3) Delegate to `codebase-explorer` to gather context:
+   - List components, routes, forms, relevant UI elements, API.
+   - Extract props, attributes, and file structure.
 
-### B. Backlog
-1) Brief metadata: Feature/Product area; Auth ENV keys (e.g., `AUTH_EMAIL`, `AUTH_PASSWORD`). Do not store credentials.
-2) Build the `## Scenario Backlog` table (required columns: ID | Title | Component Path | Route | Priority | Tags). Validate unique ID `SCN-<number>`. The heading name/column order must be exact.
-3) Display as "Proposed Scenarios" for approval/changes.
+4) Based on the context, propose 3–7 candidate scenarios with fields:
+   | ID | Title | Component Path | Route | Priority | Tags |
 
-### C. Deep Dive (checklist per scenario)
-1) Business Goal / Outcome
-2) Preconditions (auth state, seed data, feature flags)
-3) Test Data
-4) Steps (sequential)
-5) Expected Results / Assertions (URL, DOM data-testid/role, network/data effects)
-6) Notes (logs, analytics events, cleanup)
-7) Component snippets to check during generation
-8) If login is needed, write in Preconditions "Logged in as `AUTH_EMAIL`" (use `tests/.env`). DO NOT write login steps in Steps. The generator will insert `beforeEach(uiLogin)`.
+5) For each UI element in the scenario:
+   - Use skill `collect-selector` to resolve the correct data-testid.
 
-### D. Validate & Save
-1) Default path: `docs/test-scenario/<feature>/<YYYYMMDD>-<feature>-scenario.md` (feature kebab-case, UTC date `YYYYMMDD`).
-2) Display a final summary (metadata, backlog, details). Ask for approval.
-3) When saving: create the folder if it doesn't exist; if the file already exists, ask the user for clarification with options: (a) `append`, (b) suffix with `-v2`, (c) cancel/change.
+6) For each scenario (1 scenario = 1 document):
+   - Use skill `plan-document` to generate the full markdown test plan.
 
-## Quality & Security
-1) Do not store secrets/credentials; use ENV.
-2) Use stable selectors (data-testid/role/label); avoid fluctuating text.
-3) Maintain heading/table columns to be compatible with `/venturo-e2e-web:generate`.
+7) Save the file under:
+   docs/test-plan/<feature-slug>/<YYYYMMDD>-<ID>-<feature-slug>.md
 
-## Test Plan File Template
-
-```
-Feature: <Feature Name>
-Release: <Sprint/Release>
-Owner: <QA team email>
-Date: <YYYY-MM-DD>
-Environment: // Check from tests/.env
-  BASE_URL,
-  AUTH_EMAIL,
-  AUTH_PASSWORD
-References:
-  - <related document>
-
-# Scenario Planning
-
-## Context
-- Product area: <area>
-- Goals: <goals>
-- Risks: <risks>
-
-## Scenario Backlog
-| ID | Title | Component Path | Route | Priority | Tags |
-|----|-------|----------------|-------|----------|------|
-
-## Scenario Details
-### [SCN-1] <Short Title>
-- Goal: <outcome>
-- Preconditions: <auth/seed/flags>
-- Component Path: <src/...>
-- Route: </route>
-- Test Data: <ENV/fixtures/payload>
-- Steps:
-  1. <step>
-  2. <step>
-  ...
-- Expected Results:
-  - <assert URL/UI/effect>
-- Notes: <logs/analytics/cleanup>
-```
-
-Close the session with a confirmation: "Plan saved at `docs/test-scenario/<feature>/<YYYYMMDD>-<feature>-scenario.md` and is ready for `/venturo-e2e-web:generate`."
+8) After all scenarios saved, close session with:
+   "Semua plan sudah disimpan di docs/test-plan/<feature>/ dan siap untuk `/venturo-e2e-web:generate`."
