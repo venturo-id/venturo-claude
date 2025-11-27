@@ -47,11 +47,10 @@ For each test plan:
 1) Ensure the required ENV variables are available in `tests/.env` or `tests/.env.example`. Minimum: `BASE_URL`, `AUTH_EMAIL`, `AUTH_PASSWORD`.
 2) Make sure the application is running according to the `BASE_URL` env. Run the application if it is not already running.
 3) Create a `TODO` list based on Test Plan Markdown files from Step B.
-4) Read 1 from existing test file if exists to understand pattern and code standard.
-5) Activate skill `test-file`
-6) MUST delegate to the `playwright-qa-specialist` agent for each scenario from the test plan sequentially. After the agent finishes creating the test file, delegate the `playwright-qa-fixer` agent to run the created test and fix it if there are any failed tests.
-7) Make sure `playwright-qa-specialist` agent use selector thats already mentioned on test plan file
-8) MUST use this prompt template for interaction and delegation to the `playwright-qa-fixer` agent:
+4) Activate skill `test-file`
+5) MUST delegate to the `playwright-qa-specialist` agent for each scenario from the test plan sequentially. After the agent finishes creating the test file, delegate the `playwright-qa-fixer` agent to run the created test and fix it if there are any failed tests.
+6) Make sure `playwright-qa-specialist` agent use selector thats already mentioned on test plan file
+7) MUST use this prompt template for interaction and delegation to the `playwright-qa-fixer` agent:
 ```
 Please run `npx playwright test {GENERATED_TEST_PATH} --reporter=list` then fix any failed test. Your objective is that test file 100% PASSED.
 ```
