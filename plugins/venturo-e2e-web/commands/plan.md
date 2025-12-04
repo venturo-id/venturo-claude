@@ -15,12 +15,13 @@ Think to execute step by step :
 1) Determine the feature path in the codebase:
    - The feature path refers to the directory containing related components (e.g., `src/features/user`), Never scan codebase or continue the process if user did not give the feature path.
    - If not provided, ask with options and dont continue.
-   - If still missing, stop.
    - Understand the `feature name` base on feature path (e.g., `src/features/user` it mean feature name = user).
+   - Do not give user any suggestion path.
+   - If still missing, stop.
 
 2) Determine the context test scenario:
    - Ask: "Skenario apa yang ingin diuji ?"
-   - Dont suggest any scenario except basic Create, Update, Delete scenario and max 3 suggestion scenario.
+   - **Mandatory** Do not give the user any suggestion scenario except scenario Create, Update, Delete, View for that path.
    - If context test scenario still missing, stop.
 
 3) After get `context test scenario` and `feature path` from user, Delegate to `codebase-explorer` to gather context:
@@ -53,7 +54,7 @@ Think to execute step by step :
 
 5) Based on the context, propose 3–7 candidate scenarios with the fields:
    | ID | Title | Component Path | Route | Priority | Tags |
-   - Use `SCN-<sequential>` as Code / Scenario ID
+   - Use `SCN-<sequential from 001>` as Code / Scenario ID
    - Ask user approve before continue to the next step.
 
 6) Use the `plan-document` skill to generate the full Markdown test plan for each scenario (1 scenario = 1 document).

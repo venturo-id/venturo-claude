@@ -11,7 +11,7 @@ description: Command to generate Playwright E2E test code based on test plan mar
 4. If there is a conflict, always prioritize the user's instructions.
 
 ## Instructions
-Execute step by step :
+Think to execute step by step :
 
 ### A. Determine Operation Mode
 1) Determine whether the user wants:
@@ -34,7 +34,7 @@ Execute step by step :
 2) Make sure the application is running according to the `BASE_URL` env. Run the application if it is not already running.
 3) Create a `TODOS` list based on Test Plan Markdown files.
 4) Activate skill `test-file`
-5) For each test plan file: Delegate to the `playwright-qa-specialist` agent to genereta test file sequentially then delegate the `playwright-qa-fixer` agent to run the created test and fix it if there are any failed tests.
+5) Think step by step for each test plan file: Delegate to the `playwright-qa-specialist` agent to genereta test file then delegate the `playwright-qa-fixer` agent to run the generated test and fix it if there are any failed tests.
    - The prompt for delegation to the `playwright-qa-specialist` agent should : 
       ```
       Read and understand <test-plan-path> after that think step-by-step to create test file with scenario and existing `data-testid` from that file. Do not use any assumption for `data-testid` that not mention on that file, you must Read that component and choose best selector from codebase. **Mandatory** to activate and use `test-file` skill and follow rule to create test file.
@@ -43,14 +43,14 @@ Execute step by step :
       ```
       Read and understand this test file <generated_test_file_path> after that think step-by-step to make sure all test and step on that file is passed 100%
       ```
-6. Make sure test file generated in the right place `tests/<feature_name>/<scenario-id>-<kebab-case-scenario>.spec.ts`, move the test file if in the wrong place.
+6. Make sure test file generated in the right place base on **Test File To Generate** from plan file, move the test file if in the wrong place.
 
 ### D. Quality Check
 1) Detect linting tooling: If there is a `lint` script in `package.json` or `eslint` is installed, assume linting is **allowed by default**.
 2) If `eslint` is available:
-   - Run lint + auto-fix limited to the newly created test files, e.g., `npx eslint tests/<feature_name>/<scenario-id>-<kebab-case-scenario>.spec.ts --fix`
+   - Run lint + auto-fix limited to the newly created test files, e.g., `npx eslint tests/<feature_name>/<scenario-code>-<kebab-case-scenario>.spec.ts --fix`
    - If lint fails due to configuration, display a brief error and continue.
 3) If no linting tooling is available: Briefly explain that lint was not run because no configuration was detected.
 
 ### E. Closing
-1) After generation is complete, close the session with: "Test file saved at `tests/{feature_name}/{scenario-id}-{kebab-case-scenario}.spec.ts` and is ready to be run."
+1) After generation is complete, close the session with: "Test file saved at <generated_path> and is ready to be run."

@@ -14,10 +14,11 @@ Mandatory Rules:
 Your workflow process:
 1. Run npm lint for {GENERATED_TEST_PATH} and make sure no error
 2. Run `npx playwright test {GENERATED_TEST_PATH} --reporter=list` and make sure all test and step 100% passed
+3. Capture the snapshot to understand the context
 
 Your debugging methodology:
 - Start with the most recent test failures first
-- Use Playwright's trace tools (--trace) when needed
+- Use Playwright's trace tools (--trace on) when needed
 - Check for common issues: stale selectors, race conditions, network timeouts, element visibility
 - Verify application state and UI changes that might affect test expectations
 - Review browser console errors and network requests
@@ -28,12 +29,5 @@ Fix implementation standards:
 - Add appropriate timeouts and retry logic where beneficial
 - Ensure tests are deterministic and isolated
 - Maintain test readability and performance
-
-Communication approach:
-- Report test execution results clearly
-- Explain the root cause of each failure
-- Detail the fixes applied and rationale
-- Provide recommendations for test improvement
-- Alert about any application changes that affected multiple tests
 
 Always ensure that after fixing, all tests pass reliably and consistently across different environments.

@@ -13,6 +13,7 @@ description: Use this skill every user want to create test file.
 ```
 // Components :
 // - You must add all "Component Path" from plan markdown
+
 import { test, expect, type Page } from '@playwright/test';
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:5173';

@@ -22,7 +22,7 @@ You are an e2e-installer who sets up Playwright and the testing environment.
 ### B. Playwright Installation
 1) Install Playwright, MCP Playwright, and the Chromium browser:
      - `npm install -D @playwright/test dotenv`
-     - `npm install @executeautomation/playwright-mcp-server`
+     - `npm i @playwright/mcp`
      - `npx playwright install --with-deps chromium`
 
 ### C. Project Structure & Configuration
@@ -170,9 +170,8 @@ AUTH_PASSWORD=your-password
        "type": "stdio",
        "command": "npx",
        "args": [
-         "@executeautomation/playwright-mcp-server",
-         "--isolated",
-         "--storage-state=.playwright-mcp/storage.json"
+         "@playwright/mcp@latest",
+         "--isolated"
        ]
      }
   }
@@ -200,7 +199,7 @@ test('smoke: app loads base URL', async ({ page }) => {
 3. `.gitignore` and MCP permissions updated.
 
 ## Fallbacks & Safety
-1. If a config/file already exists: offer keep/merge/overwrite (default: safe merge).
+1. If a playwright config file already exists: overwrite.
 2. `.env.example` is always append-only; do not remove existing entries.
 3. Validate JSON before writing `.claude/settings.local.json` and `.mcp.json`.
 

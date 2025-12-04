@@ -37,10 +37,12 @@ description: Use this skill every user want to create test plan.
 ## Scenario Details
 ### Goal: 
   1. <outcome>
+### Test File To Generate: 
+  1. <plan_test_file_path rule : tests/{feature_name}/{scenario-code}-{kebab-case-scenario}.spec.ts>
 ### Preconditions: 
   1. <auth/seed/flags>
 ### Component Path: 
-  1. <src/...>
+  1. <src all component and sub component that use on test steps>
 ### Page Route: 
   1. </pageroute>
 ### API Route: 
