@@ -31,19 +31,13 @@ Think to execute step by step :
 
 ### C. Generate Playwright Test Code
 1) Ensure the required `ENV` variables are available in `tests/.env` or `tests/.env.example`. Minimum: `BASE_URL`, `AUTH_EMAIL`, `AUTH_PASSWORD`.
-2) Make sure the application is running according to the `BASE_URL` env. Run the application if it is not already running.
-3) Create a `TODOS` list based on Test Plan Markdown files.
-4) Activate skill `test-file`
-5) Think step by step for each test plan file: Delegate to the `playwright-qa-specialist` agent to genereta test file then delegate the `playwright-qa-fixer` agent to run the generated test and fix it if there are any failed tests.
-   - The prompt for delegation to the `playwright-qa-specialist` agent should : 
-      ```
-      Read and understand <test-plan-path> after that think step-by-step to create test file with scenario and existing `data-testid` from that file. Do not use any assumption for `data-testid` that not mention on that file, you must Read that component and choose best selector from codebase. **Mandatory** to activate and use `test-file` skill and follow rule to create test file.
-      ```
-   - The prompt for delegation to the `
-      ```
-      Read and understand this test file <generated_test_file_path> after that think step-by-step to make sure all test and step on that file is passed 100%
-      ```
-6. Make sure test file generated in the right place base on **Test File To Generate** from plan file, move the test file if in the wrong place.
+2) Make sure the application is running according to the `BASE_URL` env. Bash(curl -s -o /dev/null -w "%{http_code}" `BASE_URL` || echo "Application not running") 
+3) Eksekusi `npm run dev` jika "Application not running".
+4) Read all plan markdown from step B.
+5) Create a `TODOS` list to generate test file based on Test Plan Markdown files.
+6) Activate skill `test-file`
+7. Generate all test file and make sure to follow `test-file` skill.
+8. Deletage to `playwright-qa-fixer` agent to run the generated test and fix it if there are any failed tests
 
 ### D. Quality Check
 1) Detect linting tooling: If there is a `lint` script in `package.json` or `eslint` is installed, assume linting is **allowed by default**.

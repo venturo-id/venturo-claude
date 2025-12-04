@@ -1,6 +1,6 @@
 {
   "name": "venturo-e2e-web",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Clean Playwright E2E testing automation with modular skills and specialized agents",
   "author": {
     "name": "Venturo",
