@@ -10,7 +10,7 @@ description: Command to draft and save a Playwright scenario plan in docs/test-p
 3) Create `TODOS` for each instructions below.
 
 ## Instructions
-Execute step by step :
+Think to execute step by step :
 
 1) Determine the feature path in the codebase:
    - The feature path refers to the directory containing related components (e.g., `src/features/user`), Never scan codebase or continue the process if user did not give the feature path.
