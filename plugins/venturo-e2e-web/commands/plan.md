@@ -20,7 +20,7 @@ Execute step by step :
 
 2) Determine the context test scenario:
    - Ask: "Skenario apa yang ingin diuji ?"
-   - Dont suggest any scenario except basic CRUD scenario and max 4 suggestion scenario.
+   - Dont suggest any scenario except basic Create, Update, Delete scenario and max 3 suggestion scenario.
    - If context test scenario still missing, stop.
 
 3) After get `context test scenario` and `feature path` from user, Delegate to `codebase-explorer` to gather context:
