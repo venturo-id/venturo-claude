@@ -16,6 +16,7 @@ Execute step by step :
    - The feature path refers to the directory containing related components (e.g., `src/features/user`), Never scan codebase or continue the process if user did not give the feature path.
    - If not provided, ask with options and dont continue.
    - If still missing, stop.
+   - Understand the `feature name` base on feature path (e.g., `src/features/user` it mean feature name = user).
 
 2) Determine the context test scenario:
    - Ask: "Skenario apa yang ingin diuji ?"
@@ -59,9 +60,9 @@ Execute step by step :
 
 7) Flow: Save the file:
    - Check feature tast plan in `docs/test-plan/`
-     - Check existing test plan using `ls -la docs/test-plan/` If you find a duplicate `<feature-slug>`, Propose to create version directory `docs/test-plan/<feature-slug>-v-*`.
+     - Check existing test plan using `ls -la docs/test-plan/` If you find a duplicate `<feature name>`, Propose to create version directory `docs/test-plan/<feature name>-v-*`.
      - Ask user approve before continue to the next step.
-   - Save the test plan file to `docs/test-plan/<feature-slug>/<Code>-<short-scenario-slug>.md`
+   - Save the test plan file to `docs/test-plan/<feature name>/<Code>-<short-scenario-slug>.md`
 
 8) After all scenarios are saved, close the session with:
-   "All plans have been saved in `docs/test-plan/<feature-slug>/` and are ready for `/venturo-e2e-web:generate`."
+   "All plans have been saved in `docs/test-plan/<feature name>/` and are ready for `/venturo-e2e-web:generate`."
