@@ -28,8 +28,6 @@ description: Use this skill every user want to create test plan.
     - BASE_URL,
     - AUTH_EMAIL,
     - AUTH_PASSWORD
-- References:
-    - <related document>
 
 ## Context
 - Product area: User Management - Core Module
@@ -37,11 +35,18 @@ description: Use this skill every user want to create test plan.
 - Risks: Form submission failure, network issues, permission validation
 
 ## Scenario Details
-### Goal: <outcome>
-### Preconditions: <auth/seed/flags>
-### Component Path: <src/...>
-### Route: </route>
-### Test Data: <ENV/fixtures/payload>
+### Goal: 
+  1. <outcome>
+### Preconditions: 
+  1. <auth/seed/flags>
+### Component Path: 
+  1. <src/...>
+### Page Route: 
+  1. </pageroute>
+### API Route: 
+  1. </apiroute>
+### Test Data: 
+  1. <constant data>
 ### Steps:
   1. <step>
   2. <step>

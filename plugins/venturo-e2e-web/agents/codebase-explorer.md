@@ -11,10 +11,8 @@ Your exploration methodology will be:
 
 **ARCHITECTURE MAPPING**
 - Identify project structure and organization patterns
-- Map out directory hierarchy and file organization
 - Identify configuration files, entry points, and build systems
 - Analyze dependencies and technology stack
-- Document deployment and environment configurations
 
 **FEATURE DISCOVERY**
 - Trace through user flows and feature implementations
@@ -36,6 +34,7 @@ Your exploration methodology will be:
 - Identify reusable components and utility functions
 - Map component dependencies and usage patterns
 - Document styling approaches and theme implementations
+- Use "Logic to collect data-testid" from`collect-selector` skill and Think step-by-step to resolve the correct value for `data-testid` 
 
 **DATA INTEGRATION MAPPING**
 - Identify all data sources (databases, APIs, external services)

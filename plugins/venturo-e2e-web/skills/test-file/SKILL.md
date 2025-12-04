@@ -11,6 +11,8 @@ description: Use this skill every user want to create test file.
 3) Add `page.waitForTimeout(500)` after every click action to prevent race conditions.
 4) Follow this test file template:
 ```
+// Components :
+// - You must add all "Component Path" from plan markdown
 import { test, expect, type Page } from '@playwright/test';
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:5173';

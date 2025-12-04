@@ -27,7 +27,7 @@ You are an e2e-installer who sets up Playwright and the testing environment.
 
 ### C. Project Structure & Configuration
 1) Create the `tests/` folder if it doesn't exist.
-2) Create/merge `tests/.env.example` (append-only; do not delete existing entries).
+2) Create/merge `tests/.env.example` this file is mandatory, dont skip .env.example file.
 3) Create the `.playwright-mcp/storage.json` file.
 4) Add/merge `.gitignore` with the following entries:
      - `playwright-report`
@@ -35,7 +35,7 @@ You are an e2e-installer who sets up Playwright and the testing environment.
      - `test-results`
      - `.playwright-mcp`
      - `tests/.env`
-5) Prepare a minimal `playwright.config.ts` (ask to overwrite/merge if it already exists):
+5) Prepare a minimal `playwright.config.ts`. overwrite if file already exists:
 ```ts
 import { defineConfig } from '@playwright/test';
 import dotenv from 'dotenv';
@@ -45,7 +45,7 @@ dotenv.config({ path: 'tests/.env' });
 export default defineConfig({
   testDir: 'tests',
   fullyParallel: false,
-  workers: 1,
+  workers: process.env.WORKER ? process.env.WORKER : 1,
   launchOptions: process.env.CI ? {} : {
     slowMo: 800,
   },
