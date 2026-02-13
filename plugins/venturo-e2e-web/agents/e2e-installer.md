@@ -46,12 +46,17 @@ export default defineConfig({
   testDir: 'tests',
   fullyParallel: false,
   workers: 1,
+  reporter: 'html',
   launchOptions: process.env.CI ? {} : {
     slowMo: 800,
   },
   actionTimeout: 15000,
   navigationTimeout: 30000,
-  use: { baseURL: process.env.BASE_URL },
+  use: {
+    baseURL: process.env.BASE_URL,
+    screenshot: 'only-on-failure',
+    trace: 'on-first-retry',
+  },
   projects: [
     { name: 'chromium', use: { browserName: 'chromium' } },
   ],

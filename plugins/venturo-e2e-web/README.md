@@ -49,13 +49,14 @@ Create structured test plans for your features with AI assistance.
 **Workflow:**
 1. Specify the feature name and path
 2. Agent explores codebase for components, routes, and UI elements
-3. Proposes candidate test scenarios
+3. Proposes candidate test scenarios (multi-select approval)
 4. Collects accurate selectors for each UI element
 5. Generates structured markdown test plans
+6. Verifies files are written to disk
 
 **Output Format:**
 ```
-docs/test-plan/<feature-slug>/<YYYYMMDD>-<ID>-<feature-slug>.md
+docs/test-plan/<feature>/<Code>-<short-scenario-slug>.md
 ```
 
 **Usage:**
@@ -94,9 +95,11 @@ Input: docs/test-plan/user-management/20250127-SCN-001-create-user.md
 1. Validates environment variables (`BASE_URL`, `AUTH_EMAIL`, `AUTH_PASSWORD`)
 2. Ensures application is running
 3. Parses test plan content
-4. Delegates to `playwright-qa-specialist` agent
-5. Runs tests and fixes failures automatically
-6. Applies linting for code quality
+4. Creates TODO checklist and loops through each scenario
+5. Generates test files using `test-file` skill
+6. Delegates to `playwright-qa-fixer` agent for test fixing
+7. Completion gate verifies all scenarios are done
+8. Applies linting for code quality
 
 **Output:**
 ```
@@ -144,14 +147,8 @@ Analyzes your codebase to gather context about components, routes, forms, and AP
 ### `e2e-installer`
 Handles Playwright installation and project configuration setup.
 
-### `playwright-qa-specialist`
-Senior QA Engineer agent that generates robust, maintainable Playwright test code following best practices.
-
 ### `playwright-qa-fixer`
 Automatically runs generated tests and fixes any failures to ensure 100% test pass rate.
-
-### `e2e-test-runner`
-Manages test execution with intelligent validation and reporting.
 
 ---
 
@@ -161,12 +158,10 @@ Manages test execution with intelligent validation and reporting.
 **Purpose:** Determines the correct `data-testid` selector for UI components.
 
 **Priority Rules:**
-1. `playwrightId` attribute/prop
-2. `data-testid` attribute/prop
-3. `name` attribute/prop
-4. `label` attribute/prop
-5. `aria-label` attribute/prop
-6. Text content of child elements
+1. `playwrightId` attribute/prop → resolved as `[data-testid="..."]`
+2. `data-testid` attribute/prop → used as `[data-testid="..."]`
+3. Text content of child elements
+4. Auto-create `playwrightId` if none of the above exist
 
 **Output:** Returns the resolved selector string or `"undefined-testid"` if none found.
 
@@ -266,10 +261,11 @@ AUTH_PASSWORD=YourPassword123
 
 The plugin generates a `playwright.config.ts` with sensible defaults:
 - Chromium browser only
-- Network idle wait strategy
-- Screenshot on failure
-- HTML reporter
-- Trace on first retry
+- `slowMo: 800` for non-CI environments
+- `screenshot: 'only-on-failure'`
+- `reporter: 'html'`
+- `trace: 'on-first-retry'`
+- `actionTimeout: 15000`, `navigationTimeout: 30000`
 
 ---
 
@@ -359,7 +355,7 @@ npx playwright show-report
 
 ## 📦 Version
 
-**Current Version:** 1.0.2
+**Current Version:** 1.0.5
 
 ---
 

@@ -7,6 +7,5 @@
     "email": "info@venturo.com"
   },
   "license": "MIT",
-  "mcpServers": "./.mcp.json",
   "keywords": ["playwright", "e2e", "testing", "automation", "qa"]
 }

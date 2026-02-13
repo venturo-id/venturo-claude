@@ -17,8 +17,8 @@ description: Use this skill every user want to create test file.
 import { test, expect, type Page } from '@playwright/test';
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:5173';
-const AUTH_EMAIL = process.env.AUTH_EMAIL || 'tantowi@gmail.com';
-const AUTH_PASSWORD = process.env.AUTH_PASSWORD || 'Bismillah1407*';
+const AUTH_EMAIL = process.env.AUTH_EMAIL || 'user@example.com';
+const AUTH_PASSWORD = process.env.AUTH_PASSWORD || 'your-password';
 
 // @INFO Create function mockData() to generate dynamic mock for test data. Dont add any test data into environment.
 function mockData() {
@@ -62,4 +62,5 @@ test.describe('SCN-1: User Management - View Users List', () => {
 4) Use semantic HTML elements such as `button`, `input`, `textarea`, `select`, `table`, `td`, `tr`, `th` and etc.
 5) Preferred selectors are `data-testid` and `getByRole`.
 6) All selectors must come from your snapshot.
-7) Must re make sure selectors is exist using tool `evaluate` for assertion `*.toBeVisible()`
+7) **CRITICAL**: Always prioritize `[data-testid="value"]` if the component has a `playwrightId="value"` or `data-testid="value"` prop/attribute. Follow the logic in `collect-selector`.
+8) Must re make sure selectors is exist using tool `evaluate` for assertion `*.toBeVisible()`
