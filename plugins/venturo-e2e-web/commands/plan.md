@@ -63,7 +63,7 @@ Think to execute step by step :
 7) Flow: Save the file:
    - Check feature test plan in `docs/test-plan/`
      - Check existing test plan using `ls -la docs/test-plan/` If you find a duplicate `<feature name>`, Propose to create version directory `docs/test-plan/<feature name>-v-*`.
-   - AskQuestion using multiple select to answer, Show list of scenario ID and Scenario Name and All options.
+   - AskQuestion using multiple select to answer, Show list of scenario ID and Scenario Name and "All" options.
    - Save the test plan file to `docs/test-plan/<feature name>/<Code>-<short-scenario-slug>.md`
    - **MUST write the complete document to disk**. Do NOT skip this step.
    - **Verify** each file exists at the target path after writing.
