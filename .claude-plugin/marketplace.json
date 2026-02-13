@@ -14,7 +14,7 @@
             "name": "venturo-e2e-web",
             "source": "./plugins/venturo-e2e-web",
             "description": "QA Engineer Automation plugin for Playwright E2E testing with auto-scenario generation and validation",
-            "version": "1.0.4",
+            "version": "1.0.5",
             "author": {
                 "name": "Venturo",
                 "email": "dev@venturo.id"

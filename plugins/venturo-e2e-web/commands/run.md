@@ -38,7 +38,7 @@ ENV is loaded via `dotenv` in `playwright.config.ts` (path `tests/.env`).
 ### B. Find Tests
 1) Scan `tests/` and list the test files (grouped by feature).
 2) If there is a `scope` (file/dir), filter accordingly.
-3) Display a numbered list; ask: which ones to run? (number/path)
+3) Present the discovered test files to the user using an interactive question that **allows multiple selections** (multi-select). The user can select one or more test files to run. Display each test file as an option with format: `<feature>/<filename>`. Include an "All" option at the top to select all test files.
 4) If empty: suggest `/venturo-e2e-web:install` or `/venturo-e2e-web:generate`.
 
 ### C. Execution Configuration

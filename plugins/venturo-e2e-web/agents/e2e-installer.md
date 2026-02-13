@@ -45,7 +45,7 @@ dotenv.config({ path: 'tests/.env' });
 export default defineConfig({
   testDir: 'tests',
   fullyParallel: false,
-  workers: process.env.WORKER ? process.env.WORKER : 1,
+  workers: 1,
   launchOptions: process.env.CI ? {} : {
     slowMo: 800,
   },

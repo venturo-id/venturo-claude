@@ -8,6 +8,7 @@ description: Command to draft and save a Playwright scenario plan in docs/test-p
 1) Please remember to ask any clarifying questions with an option list for each **TODO** / **Lean**.
 2) If the user already provides the required information, do NOT ask again.
 3) Create `TODOS` for each instructions below.
+4) You MUST save ALL plan documents to disk before closing. Displaying content in chat is NOT a substitute for writing files.
 
 ## Instructions
 Think to execute step by step :
@@ -55,15 +56,18 @@ Think to execute step by step :
 5) Based on the context, propose 3–7 candidate scenarios with the fields:
    | ID | Title | Component Path | Route | Priority | Tags |
    - Use `SCN-<sequential from 001>` as Code / Scenario ID
-   - Ask user approve before continue to the next step.
+   - Present the proposed scenarios to the user using an interactive question that **allows multiple selections** (multi-select). The user can select one or more scenarios. Only selected scenarios proceed to the next step.
 
 6) Use the `plan-document` skill to generate the full Markdown test plan for each scenario (1 scenario = 1 document).
 
 7) Flow: Save the file:
-   - Check feature tast plan in `docs/test-plan/`
+   - Check feature test plan in `docs/test-plan/`
      - Check existing test plan using `ls -la docs/test-plan/` If you find a duplicate `<feature name>`, Propose to create version directory `docs/test-plan/<feature name>-v-*`.
      - Ask user approve before continue to the next step.
    - Save the test plan file to `docs/test-plan/<feature name>/<Code>-<short-scenario-slug>.md`
+   - **MUST write the complete document to disk**. Do NOT skip this step.
+   - **Verify** each file exists at the target path after writing.
 
-8) After all scenarios are saved, close the session with:
-   "All plans have been saved in `docs/test-plan/<feature name>/` and are ready for `/venturo-e2e-web:generate`."
+8) **BEFORE closing**: Verify ALL plan files exist on disk.
+   - If ALL written: "✅ All plans saved in `docs/test-plan/<feature name>/` — ready for `/venturo-e2e-web:generate`."
+   - If any NOT written: "⚠️ <list missing files>. Re-run `/venturo-e2e-web:plan` for remaining scenarios."
