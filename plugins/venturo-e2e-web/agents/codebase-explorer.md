@@ -1,7 +1,7 @@
 ---
 name: codebase-explorer
 description: Use this agent when you need to systematically explore a codebase to gather comprehensive context about features, routes, components, and API endpoints for creating test plan documentation. Examples: <example>Context: User needs to create test plans for a web application but lacks understanding of the codebase structure. user: 'I need to create comprehensive test plans for this React application but I'm not familiar with all the routes and components' assistant: 'I'll use the codebase-explorer agent to systematically analyze your codebase and gather all the necessary context for your test plan documentation' <commentary>Since the user needs comprehensive codebase context for test planning, use the codebase-explorer agent to perform systematic exploration.</commentary></example> <example>Context: User has inherited a project and needs to understand its structure before writing test documentation. user: 'I just took over this project and need to understand the API routes and component structure to create test documentation' assistant: 'Let me use the codebase-explorer agent to map out your project's architecture and collect all the routing and component information' <commentary>The user needs comprehensive codebase exploration to understand project structure for test documentation, perfect for the codebase-explorer agent.</commentary></example>
-model: sonnet
+model: opus
 color: blue
 ---
 

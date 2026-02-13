@@ -3,7 +3,7 @@ name: e2e-installer
 description: Use this agent when you need to set up Playwright E2E testing from scratch in a project. Examples: <example>Context: User wants to add E2E testing to their Angular project. user: 'I need to add E2E testing to my project, can you set up Playwright for me?' assistant: 'I'll use the e2e-installer agent to set up Playwright with the exact configuration you need.'
 <commentary>User needs complete Playwright setup with specific requirements, so use the e2e-installer agent.</commentary></example> <example>Context: User is starting a new project and wants E2E testing configured properly. user: 'Set up E2E testing for my new project' assistant: 'Let me use the e2e-installer agent to configure Playwright according to your specifications.'
 <commentary>This is a fresh Playwright setup request, perfect for the e2e-installer agent.</commentary></example>
-model: sonnet
+model: opus
 color: green
 --- 
 
