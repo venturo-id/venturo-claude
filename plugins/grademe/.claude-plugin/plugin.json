@@ -1,0 +1,17 @@
+{
+  "name": "grademe",
+  "version": "0.1.0",
+  "description": "Grades a Claude Code session against the 7-dimension vibe-coding rubric; outputs scored JSON + Bahasa Indonesia coaching.",
+  "author": {
+    "name": "Venturo",
+    "email": "dev@venturo.id"
+  },
+  "license": "MIT",
+  "keywords": [
+    "scoring",
+    "vibe-coding",
+    "session-analysis",
+    "coaching",
+    "leaderboard"
+  ]
+}
