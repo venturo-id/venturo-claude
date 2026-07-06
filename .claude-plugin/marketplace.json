@@ -6,7 +6,7 @@
     },
     "metadata": {
         "description": "Claude Code plugin marketplace by Venturo - Professional development tools and automation utilities",
-        "version": "1.0.2",
+        "version": "1.0.3",
         "pluginRoot": "./plugins"
     },
     "plugins": [
@@ -128,6 +128,33 @@
                 "documentation",
                 "erd-generation",
                 "api-contracts"
+            ]
+        },
+        {
+            "name": "grademe",
+            "source": "./plugins/grademe",
+            "description": "Vibe coding session scoring - Grades Claude Code sessions against a 7-dimension rubric with JSON output and Bahasa Indonesia coaching",
+            "version": "0.1.0",
+            "author": {
+                "name": "Venturo",
+                "email": "dev@venturo.id"
+            },
+            "homepage": "https://github.com/venturo-id/venturo-claude/tree/production/plugins/grademe",
+            "repository": "https://github.com/venturo-id/venturo-claude",
+            "license": "MIT",
+            "keywords": [
+                "scoring",
+                "vibe-coding",
+                "session-analysis",
+                "coaching",
+                "leaderboard"
+            ],
+            "category": "productivity",
+            "tags": [
+                "scoring",
+                "session-grading",
+                "vibe-coding",
+                "coaching"
             ]
         }
     ]
