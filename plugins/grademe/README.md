@@ -9,7 +9,7 @@ Jalankan di akhir session Claude Code → menganalisa transcript session terhada
 /plugin install grademe@venturo-tools
 ```
 
-## Update v0.1 → v0.2 (yang sudah pernah install)
+## Update ke versi terbaru (0.2.2)
 
 ```
 /plugin marketplace update venturo-tools
@@ -18,9 +18,9 @@ Jalankan di akhir session Claude Code → menganalisa transcript session terhada
 
 Shell: `claude plugin update grademe@venturo-tools`
 
-Cek versi: `/plugin list` → grademe `0.2.x`. Aktifkan: `/reload-plugins` (atau restart Claude Code).
+Cek versi: `/plugin list` → grademe `0.2.2`. Aktifkan: `/reload-plugins` (atau restart Claude Code).
 
-Baru di v0.2: `--upload` kirim skor ke leaderboard (env `VIBESCORE_API_URL` + `VIBESCORE_API_KEY` — lihat Catatan di bawah).
+Baru di 0.2.2: upload otomatis ke leaderboard begitu env token terpasang — 3 langkah: generate token → export `VIBESCORE_API_URL` + `VIBESCORE_API_KEY` → `/grademe` (upload otomatis; `--no-upload` untuk grade lokal saja).
 
 ## Pakai
 
@@ -58,10 +58,10 @@ Idealnya jalankan di session BARU setelah sesi kerja selesai (buka Claude Code b
 
 Skor ada misses → maksimal 94. Skor 95+ = session tanpa cela. Skor 0 + catatan gaming = transcript terdeteksi berisi teks yang mencoba mempengaruhi penilaian.
 
-## Catatan (v0.2)
+## Catatan (0.2.2)
 
 - Grader = LLM; variance wajar ±4 poin antar run pada session yang sama.
 - Nama peserta self-reported (belum diverifikasi).
 - Session yang pernah di-`/compact`: bukti sebelum compaction hilang → skor bisa lebih rendah dari seharusnya; dicatat di narasi.
-- v0.2: flag `--upload` kirim skor ke leaderboard — butuh env `VIBESCORE_API_URL` + `VIBESCORE_API_KEY`.
-- Generate `VIBESCORE_API_KEY` sendiri: https://vibescore-leaderboard-sigma.vercel.app/token (nama lengkap → Generate → salin & simpan token, hanya tampil sekali; key hilang → hubungi panitia).
+- Sejak 0.2.2: upload ke leaderboard **otomatis** kalau env `VIBESCORE_API_URL` + `VIBESCORE_API_KEY` terpasang — tidak perlu flag. `--no-upload` untuk grade lokal saja; `--upload` lama tetap jalan tapi redundan.
+- Generate `VIBESCORE_API_KEY` sendiri: https://vibescore-leaderboard-sigma.vercel.app/token (nama lengkap → Generate → salin & simpan token, hanya tampil sekali; token hilang → tombol rotate di halaman yang sama).
