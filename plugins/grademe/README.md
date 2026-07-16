@@ -45,9 +45,9 @@ Idealnya jalankan di session BARU setelah sesi kerja selesai (buka Claude Code b
 
 Skor ada misses → maksimal 94. Skor 95+ = session tanpa cela. Skor 0 + catatan gaming = transcript terdeteksi berisi teks yang mencoba mempengaruhi penilaian.
 
-## Catatan (v0.1)
+## Catatan (v0.2)
 
 - Grader = LLM; variance wajar ±4 poin antar run pada session yang sama.
 - Nama peserta self-reported (belum diverifikasi).
 - Session yang pernah di-`/compact`: bukti sebelum compaction hilang → skor bisa lebih rendah dari seharusnya; dicatat di narasi.
-- v0.2 (menyusul): flag `--upload` → kirim skor ke leaderboard.
+- v0.2: flag `--upload` kirim skor ke leaderboard — butuh env `VIBESCORE_API_URL` + `VIBESCORE_API_KEY`.

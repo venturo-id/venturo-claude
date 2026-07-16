@@ -76,3 +76,31 @@ Return ONLY this JSON (field names/types exact; breakdown values sum to total_sc
 ## Presenting
 
 After the fenced JSON, add one provenance line in the narrative: transcript path, sessionId, discovered vs explicitly passed (`sumber: otomatis` / `sumber: manual`), file mtime, line count. If the leaderboard submission path rejects `prompt_analysis`, submit contract fields only and show prompt_analysis to the user separately.
+
+## Upload ke leaderboard (`--upload`, v0.2)
+
+Only when the user passes `--upload` (e.g. `/grademe <path> --upload`). Default = grade + present only. Needs two env vars — if either is missing, present the score and tell the user to set them; do NOT invent a URL or key:
+
+- `VIBESCORE_API_URL` — base URL vibescore-api (mis. `http://localhost:8080`).
+- `VIBESCORE_API_KEY` — key peserta. **Identitas berasal dari key ini, bukan field `participant`** (BACKLOG #1). Key salah/absen → server balas 401.
+
+Steps after validation passes:
+
+1. **Build submission body** from the graded JSON — contract fields ONLY:
+   - Strip `prompt_analysis` (leaderboard contract has no such field; show it to the user separately). BACKLOG #7: API mengabaikan field tak dikenal, tapi strip tetap eksplisit.
+   - Add `session_id` — deterministik dari sesi yang dinilai, jadi rerun file yang sama = id sama (server dedup → 409, BACKLOG #2). Gunakan `sessionId` transkrip bila ada; jika tidak, `sha256(transcript_path + session_date)` 16 hex pertama.
+   - `participant` boleh apa adanya (server override dari key) — jangan bergantung padanya.
+2. **POST** via one Bash `curl` (jangan cetak nilai key):
+   ```bash
+   curl -sS -o /tmp/grademe_upload.json -w '%{http_code}' \
+     -X POST "$VIBESCORE_API_URL/scores" \
+     -H "Content-Type: application/json" \
+     -H "X-API-Key: $VIBESCORE_API_KEY" \
+     --data @/tmp/grademe_submission.json
+   ```
+3. **Report by status** (apa adanya, jangan retry membabi-buta):
+   - `201` → "Skor terkirim ke leaderboard." + `participant` + `id` dari respons.
+   - `409` → "Sesi ini sudah pernah di-upload (dedup session_id) — skor tidak digandakan."
+   - `401` → "VIBESCORE_API_KEY tidak valid/absen — skor TIDAK terkirim." 
+   - `400` → tampilkan `error` dari body (payload ditolak kontrak).
+   - lainnya / curl gagal → laporkan kode + pesan, jangan diam.

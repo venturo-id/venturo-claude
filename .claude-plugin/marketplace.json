@@ -1,161 +1,161 @@
 {
-    "name": "venturo-tools",
-    "owner": {
-        "name": "Venturo.id",
-        "email": "admin@venturo.id"
+  "name": "venturo-tools",
+  "owner": {
+    "name": "Venturo.id",
+    "email": "admin@venturo.id"
+  },
+  "metadata": {
+    "description": "Claude Code plugin marketplace by Venturo - Professional development tools and automation utilities",
+    "version": "1.0.4",
+    "pluginRoot": "./plugins"
+  },
+  "plugins": [
+    {
+      "name": "venturo-e2e-web",
+      "source": "./plugins/venturo-e2e-web",
+      "description": "QA Engineer Automation plugin for Playwright E2E testing with auto-scenario generation and validation",
+      "version": "1.0.5",
+      "author": {
+        "name": "Venturo",
+        "email": "dev@venturo.id"
+      },
+      "homepage": "https://github.com/venturo-id/venturo-claude/tree/production/plugins/venturo-e2e-web",
+      "repository": "https://github.com/venturo-id/venturo-claude",
+      "license": "MIT",
+      "keywords": [
+        "playwright",
+        "e2e",
+        "testing",
+        "automation",
+        "qa",
+        "web-testing"
+      ],
+      "category": "testing",
+      "tags": [
+        "playwright",
+        "e2e",
+        "automation",
+        "qa-engineer",
+        "test-generation"
+      ]
     },
-    "metadata": {
-        "description": "Claude Code plugin marketplace by Venturo - Professional development tools and automation utilities",
-        "version": "1.0.3",
-        "pluginRoot": "./plugins"
+    {
+      "name": "venturo-go",
+      "source": "./plugins/venturo-go",
+      "description": "Go backend development automation for Venturo skeleton - Guided workflows for features, entities, endpoints, and adapters",
+      "version": "1.0.0",
+      "author": {
+        "name": "Venturo",
+        "email": "dev@venturo.id"
+      },
+      "homepage": "https://github.com/venturo-id/venturo-claude/tree/production/plugins/venturo-go",
+      "repository": "https://github.com/venturo-id/venturo-claude",
+      "license": "MIT",
+      "keywords": [
+        "go",
+        "golang",
+        "backend",
+        "gin",
+        "clean-architecture",
+        "crud",
+        "code-generation"
+      ],
+      "category": "development",
+      "tags": [
+        "go",
+        "backend",
+        "clean-architecture",
+        "feature-generation",
+        "crud-automation"
+      ]
     },
-    "plugins": [
-        {
-            "name": "venturo-e2e-web",
-            "source": "./plugins/venturo-e2e-web",
-            "description": "QA Engineer Automation plugin for Playwright E2E testing with auto-scenario generation and validation",
-            "version": "1.0.5",
-            "author": {
-                "name": "Venturo",
-                "email": "dev@venturo.id"
-            },
-            "homepage": "https://github.com/venturo-id/venturo-claude/tree/production/plugins/venturo-e2e-web",
-            "repository": "https://github.com/venturo-id/venturo-claude",
-            "license": "MIT",
-            "keywords": [
-                "playwright",
-                "e2e",
-                "testing",
-                "automation",
-                "qa",
-                "web-testing"
-            ],
-            "category": "testing",
-            "tags": [
-                "playwright",
-                "e2e",
-                "automation",
-                "qa-engineer",
-                "test-generation"
-            ]
-        },
-        {
-            "name": "venturo-go",
-            "source": "./plugins/venturo-go",
-            "description": "Go backend development automation for Venturo skeleton - Guided workflows for features, entities, endpoints, and adapters",
-            "version": "1.0.0",
-            "author": {
-                "name": "Venturo",
-                "email": "dev@venturo.id"
-            },
-            "homepage": "https://github.com/venturo-id/venturo-claude/tree/production/plugins/venturo-go",
-            "repository": "https://github.com/venturo-id/venturo-claude",
-            "license": "MIT",
-            "keywords": [
-                "go",
-                "golang",
-                "backend",
-                "gin",
-                "clean-architecture",
-                "crud",
-                "code-generation"
-            ],
-            "category": "development",
-            "tags": [
-                "go",
-                "backend",
-                "clean-architecture",
-                "feature-generation",
-                "crud-automation"
-            ]
-        },
-        {
-            "name": "venturo-react",
-            "source": "./plugins/venturo-react",
-            "description": "React frontend development automation for Venturo skeleton - Guided workflows for features from OpenAPI specs",
-            "version": "1.0.0",
-            "author": {
-                "name": "Venturo",
-                "email": "dev@venturo.id"
-            },
-            "homepage": "https://github.com/venturo-id/venturo-claude/tree/production/plugins/venturo-react",
-            "repository": "https://github.com/venturo-id/venturo-claude",
-            "license": "MIT",
-            "keywords": [
-                "react",
-                "frontend",
-                "typescript",
-                "mui",
-                "openapi",
-                "react-query",
-                "code-generation"
-            ],
-            "category": "development",
-            "tags": [
-                "react",
-                "frontend",
-                "typescript",
-                "openapi-integration",
-                "feature-generation"
-            ]
-        },
-        {
-            "name": "venturo-planner",
-            "source": "./plugins/venturo-planner",
-            "description": "Database design and API contract planning - Generate ERD, DBML, PostgreSQL migrations, and API contracts following audit standards",
-            "version": "1.0.0",
-            "author": {
-                "name": "Venturo",
-                "email": "dev@venturo.id"
-            },
-            "homepage": "https://github.com/venturo-id/venturo-claude/tree/production/plugins/venturo-planner",
-            "repository": "https://github.com/venturo-id/venturo-claude",
-            "license": "MIT",
-            "keywords": [
-                "database-design",
-                "erd",
-                "dbml",
-                "api-contract",
-                "planning",
-                "documentation",
-                "mermaid",
-                "postgresql"
-            ],
-            "category": "development",
-            "tags": [
-                "database-design",
-                "planning",
-                "documentation",
-                "erd-generation",
-                "api-contracts"
-            ]
-        },
-        {
-            "name": "grademe",
-            "source": "./plugins/grademe",
-            "description": "Vibe coding session scoring - Grades Claude Code sessions against a 7-dimension rubric with JSON output and Bahasa Indonesia coaching",
-            "version": "0.1.0",
-            "author": {
-                "name": "Venturo",
-                "email": "dev@venturo.id"
-            },
-            "homepage": "https://github.com/venturo-id/venturo-claude/tree/production/plugins/grademe",
-            "repository": "https://github.com/venturo-id/venturo-claude",
-            "license": "MIT",
-            "keywords": [
-                "scoring",
-                "vibe-coding",
-                "session-analysis",
-                "coaching",
-                "leaderboard"
-            ],
-            "category": "productivity",
-            "tags": [
-                "scoring",
-                "session-grading",
-                "vibe-coding",
-                "coaching"
-            ]
-        }
-    ]
+    {
+      "name": "venturo-react",
+      "source": "./plugins/venturo-react",
+      "description": "React frontend development automation for Venturo skeleton - Guided workflows for features from OpenAPI specs",
+      "version": "1.0.0",
+      "author": {
+        "name": "Venturo",
+        "email": "dev@venturo.id"
+      },
+      "homepage": "https://github.com/venturo-id/venturo-claude/tree/production/plugins/venturo-react",
+      "repository": "https://github.com/venturo-id/venturo-claude",
+      "license": "MIT",
+      "keywords": [
+        "react",
+        "frontend",
+        "typescript",
+        "mui",
+        "openapi",
+        "react-query",
+        "code-generation"
+      ],
+      "category": "development",
+      "tags": [
+        "react",
+        "frontend",
+        "typescript",
+        "openapi-integration",
+        "feature-generation"
+      ]
+    },
+    {
+      "name": "venturo-planner",
+      "source": "./plugins/venturo-planner",
+      "description": "Database design and API contract planning - Generate ERD, DBML, PostgreSQL migrations, and API contracts following audit standards",
+      "version": "1.0.0",
+      "author": {
+        "name": "Venturo",
+        "email": "dev@venturo.id"
+      },
+      "homepage": "https://github.com/venturo-id/venturo-claude/tree/production/plugins/venturo-planner",
+      "repository": "https://github.com/venturo-id/venturo-claude",
+      "license": "MIT",
+      "keywords": [
+        "database-design",
+        "erd",
+        "dbml",
+        "api-contract",
+        "planning",
+        "documentation",
+        "mermaid",
+        "postgresql"
+      ],
+      "category": "development",
+      "tags": [
+        "database-design",
+        "planning",
+        "documentation",
+        "erd-generation",
+        "api-contracts"
+      ]
+    },
+    {
+      "name": "grademe",
+      "source": "./plugins/grademe",
+      "description": "Grades a Claude Code session against the 7-dimension vibe-coding rubric; outputs scored JSON + Bahasa Indonesia coaching. v0.2: --upload ke leaderboard (auth API key + dedup session_id).",
+      "version": "0.2.0",
+      "author": {
+        "name": "Venturo",
+        "email": "dev@venturo.id"
+      },
+      "homepage": "https://github.com/venturo-id/venturo-claude/tree/production/plugins/grademe",
+      "repository": "https://github.com/venturo-id/venturo-claude",
+      "license": "MIT",
+      "keywords": [
+        "scoring",
+        "vibe-coding",
+        "session-analysis",
+        "coaching",
+        "leaderboard"
+      ],
+      "category": "productivity",
+      "tags": [
+        "scoring",
+        "session-grading",
+        "vibe-coding",
+        "coaching"
+      ]
+    }
+  ]
 }
