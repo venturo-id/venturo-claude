@@ -77,9 +77,13 @@ Return ONLY this JSON (field names/types exact; breakdown values sum to total_sc
 
 After the fenced JSON, add one provenance line in the narrative: transcript path, sessionId, discovered vs explicitly passed (`sumber: otomatis` / `sumber: manual`), file mtime, line count. If the leaderboard submission path rejects `prompt_analysis`, submit contract fields only and show prompt_analysis to the user separately.
 
-## Upload ke leaderboard (`--upload`, v0.2)
+## Upload ke leaderboard (otomatis, v0.2.2)
 
-Only when the user passes `--upload` (e.g. `/grademe <path> --upload`). Default = grade + present only. Needs two env vars — if either is missing, present the score and tell the user to set them; do NOT invent a URL or key:
+Setelah grading selesai dan skor ditampilkan: cek env `VIBESCORE_API_URL` + `VIBESCORE_API_KEY`. **Keduanya ada → upload otomatis**, tidak perlu flag apa pun. Flag `--upload` tetap diterima untuk backward compat, tapi kini redundan (upload sudah otomatis bila env lengkap).
+
+Salah satu/keduanya absen → tampilkan skor, skip upload (bukan error), dan beritahu user cara mengaktifkan: generate token di `https://vibescore-leaderboard-sigma.vercel.app/token`, lalu export kedua env var berikut. Do NOT invent a URL or key.
+
+Flag baru `--no-upload`: grade lokal saja, skip upload walau env lengkap.
 
 - `VIBESCORE_API_URL` — base URL vibescore-api (mis. `http://localhost:8080`).
 - `VIBESCORE_API_KEY` — key peserta. **Identitas berasal dari key ini, bukan field `participant`** (BACKLOG #1). Key salah/absen → server balas 401.
