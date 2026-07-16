@@ -9,6 +9,19 @@ Jalankan di akhir session Claude Code → menganalisa transcript session terhada
 /plugin install grademe@venturo-tools
 ```
 
+## Update v0.1 → v0.2 (yang sudah pernah install)
+
+```
+/plugin marketplace update venturo-tools
+/plugin update grademe@venturo-tools
+```
+
+Shell: `claude plugin update grademe@venturo-tools`
+
+Cek versi: `/plugin list` → grademe `0.2.x`. Aktifkan: `/reload-plugins` (atau restart Claude Code).
+
+Baru di v0.2: `--upload` kirim skor ke leaderboard (env `VIBESCORE_API_URL` + `VIBESCORE_API_KEY` — lihat Catatan di bawah).
+
 ## Pakai
 
 ```
@@ -51,3 +64,4 @@ Skor ada misses → maksimal 94. Skor 95+ = session tanpa cela. Skor 0 + catatan
 - Nama peserta self-reported (belum diverifikasi).
 - Session yang pernah di-`/compact`: bukti sebelum compaction hilang → skor bisa lebih rendah dari seharusnya; dicatat di narasi.
 - v0.2: flag `--upload` kirim skor ke leaderboard — butuh env `VIBESCORE_API_URL` + `VIBESCORE_API_KEY`.
+- Generate `VIBESCORE_API_KEY` sendiri: https://vibescore-leaderboard-sigma.vercel.app/token (nama lengkap → Generate → salin & simpan token, hanya tampil sekali; key hilang → hubungi panitia).
