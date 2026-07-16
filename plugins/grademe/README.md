@@ -9,7 +9,7 @@ Jalankan di akhir session Claude Code → menganalisa transcript session terhada
 /plugin install grademe@venturo-tools
 ```
 
-## Update ke versi terbaru (0.2.2)
+## Update ke versi terbaru (0.2.3)
 
 ```
 /plugin marketplace update venturo-tools
@@ -18,9 +18,26 @@ Jalankan di akhir session Claude Code → menganalisa transcript session terhada
 
 Shell: `claude plugin update grademe@venturo-tools`
 
-Cek versi: `/plugin list` → grademe `0.2.2`. Aktifkan: `/reload-plugins` (atau restart Claude Code).
+Cek versi: `/plugin list` → grademe `0.2.3`. Aktifkan: `/reload-plugins` (atau restart Claude Code).
 
-Baru di 0.2.2: upload otomatis ke leaderboard begitu env token terpasang — 3 langkah: generate token → export `VIBESCORE_API_URL` + `VIBESCORE_API_KEY` → `/grademe` (upload otomatis; `--no-upload` untuk grade lokal saja).
+Baru di 0.2.2: upload otomatis ke leaderboard begitu env token terpasang — lihat "Setup upload" di bawah.
+
+## Setup upload (sekali)
+
+1. **Generate token**: buka https://vibescore-leaderboard-sigma.vercel.app/token → nama lengkap → Generate → SALIN & simpan (token hanya tampil sekali; hilang → tombol rotate di halaman yang sama).
+2. **Pasang env permanen** — simpan di file konfigurasi shell supaya tidak hilang saat terminal ditutup/reboot:
+
+   ```bash
+   # zsh (default macOS):
+   echo 'export VIBESCORE_API_URL=https://vibescore-api.vercel.app' >> ~/.zshrc
+   echo 'export VIBESCORE_API_KEY=<token-kamu>' >> ~/.zshrc
+   source ~/.zshrc
+
+   # bash (kebanyakan Linux): ganti ~/.zshrc → ~/.bashrc
+   ```
+
+   (`export` biasa di terminal juga jalan, tapi hanya untuk sesi terminal itu — hilang saat tutup terminal.)
+3. **Cek**: `echo $VIBESCORE_API_KEY` harus menampilkan token-mu. Selesai — `/grademe` otomatis meng-upload skor; `--no-upload` untuk grade lokal saja.
 
 ## Pakai
 
