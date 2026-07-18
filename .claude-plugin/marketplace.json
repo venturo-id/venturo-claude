@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Claude Code plugin marketplace by Venturo - Professional development tools and automation utilities",
-    "version": "1.0.8",
+    "version": "1.0.9",
     "pluginRoot": "./plugins"
   },
   "plugins": [
