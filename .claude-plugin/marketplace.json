@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Claude Code plugin marketplace by Venturo - Professional development tools and automation utilities",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -133,8 +133,8 @@
     {
       "name": "grademe",
       "source": "./plugins/grademe",
-      "description": "Grades a Claude Code session against the 7-dimension vibe-coding rubric; outputs scored JSON + Bahasa Indonesia coaching. v0.2.2: auto-upload ke leaderboard saat env token terpasang (auth API key + dedup session_id).",
-      "version": "0.2.3",
+      "description": "Grades a Claude Code session against the 7-dimension vibe-coding rubric; outputs scored JSON + Bahasa Indonesia coaching. v0.3.0: mandatory live-session grading (env/nonce detection ladder), digest.py preprocessing (~10-160x smaller than raw JSONL), session_name + compacted flag in output, endpoint pindah ke venturo.pro.",
+      "version": "0.3.0",
       "author": {
         "name": "Venturo",
         "email": "dev@venturo.id"
