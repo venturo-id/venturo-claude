@@ -1,7 +1,7 @@
 {
   "name": "grademe",
-  "version": "0.3.0",
-  "description": "Grades a Claude Code session against the 7-dimension vibe-coding rubric; outputs scored JSON + Bahasa Indonesia coaching. v0.3.0: mandatory live-session grading (env/nonce detection ladder), digest.py preprocessing (~10-160x smaller than raw JSONL), session_name + compacted flag in output, endpoint pindah ke venturo.pro.",
+  "version": "0.4.1",
+  "description": "Grades a Claude Code session against the 7-dimension vibe-coding rubric; outputs scored JSON + Bahasa Indonesia coaching. v0.4.1: fix bug nyata — file sementara /tmp/grademe_digest.json dkk kini per-transkrip (${TAG} suffix) alih-alih path fixed, mencegah grading membaca digest/submission basi milik sesi/peserta lain; ditambah assertion session_id digest vs sesi teresolve. v0.4.0: payload upload lengkap — prompt_analysis kini DIKIRIM (v0.3.0 keliru men-strip-nya), plus usage_totals, type_counts, dan grademe_version; fallback strip-on-400 dihapus. v0.3.0: mandatory live-session grading (env/nonce detection ladder), digest.py preprocessing (~10-160x smaller than raw JSONL), session_name + compacted flag in output, endpoint pindah ke venturo.pro.",
   "author": {
     "name": "Venturo",
     "email": "dev@venturo.id"

@@ -18,10 +18,14 @@ Run at end of a Claude Code session → analyzes the session chat against the 7-
 | Efisiensi Token | 10 |
 | Dokumentasi | 5 |
 
-## Output JSON (contract with vibescore-api — do not change without updating api)
+## Submission JSON (contract with vibescore-api — do not change without updating api)
+
+Sumber kebenaran kontrak = `openapi.yaml` di repo `vibescore-be`, schema `ScoreSubmission`. Bentuk v0.4.1 (sama dengan v0.4.0 — v0.4.1 hanya mengubah nama file /tmp sementara, bukan bentuk payload):
+
 ```json
 {
   "participant": "string",
+  "session_id": "string",
   "session_date": "ISO8601",
   "total_score": 0,
   "breakdown": {
@@ -30,14 +34,33 @@ Run at end of a Claude Code session → analyzes the session chat against the 7-
     "documentation": 0
   },
   "misses": ["string"],
-  "next_session_advice": "string"
+  "next_session_advice": "string",
+  "session_name": "string",
+  "compacted": false,
+  "prompt_analysis": {
+    "weak_patterns": ["string"],
+    "example_rewrites": [{"original": "string", "better": "string"}]
+  },
+  "transcript_meta": {
+    "line_count": 0, "byte_size": 0, "sha256_prefix": "string",
+    "first_timestamp": "ISO8601", "last_timestamp": "ISO8601"
+  },
+  "usage_totals": {
+    "input_tokens": 0, "output_tokens": 0, "cache_read_input_tokens": 0
+  },
+  "type_counts": {"user": 0, "assistant": 0},
+  "grademe_version": "0.4.1"
 }
 ```
+
+Field di bawah `misses`/`next_session_advice` semuanya opsional dari sisi server — BE lama maupun baru menerima payload tanpa field-field itu (balas 201, field yang tak dikenal diabaikan). `participant` diabaikan untuk identitas; server memakai `X-API-Key`. Array `events` dari digest **tidak pernah** dikirim.
 
 ## Versions
 - **v0.1 (needed Mg 1):** local scoring + JSON + narrative. Install via marketplace `venturo-tools` (`venturo-id/venturo-claude`).
 - **v0.2 (needed Mg 6):** `--upload` flag → POST JSON to vibescore-api with participant API key.
 - **v0.3.0:** mandatory live-session grading (detection ladder: env var → nonce self-id → explicit `--transcript` → strict fail; auto-discovery removed); `scripts/digest.py` preprocessing (raw JSONL → compact digest, ~10–160× smaller — subagent reads digest, not raw transcript); new output fields `session_name` + `compacted`; endpoint moved to `venturo.pro` (`vibescore-be.venturo.pro` API, `vibescore.venturo.pro` leaderboard + token page).
+- **v0.4.0:** payload upload diperluas — `prompt_analysis` kini **DIKIRIM** (bug v0.3.0: sebelumnya di-strip tepat sebelum POST, sehingga hasil analisis paling bernilai tidak pernah sampai ke database), plus `usage_totals`, `type_counts`, dan `grademe_version`. Array `events` sengaja **tidak** dikirim (privasi — memuat prompt verbatim — dan batas body 256KB). Fallback strip-on-400 dihapus: BE tidak pernah menolak field tak dikenal, jadi 400 selalu berarti pelanggaran kontrak riil. Butuh vibescore-be ≥ v0.10.0 agar tersimpan; BE lama tetap membalas 201, hanya field barunya diabaikan.
+- **v0.4.1:** fix bug nyata ditemukan saat testing E2E — file sementara (`/tmp/grademe_digest.json`, `_submission.json`, `_upload.json`) dulu pakai path FIXED, sama untuk semua sesi/peserta/waktu di mesin yang sama. Dua insiden nyata: grading membaca digest/submission BASI milik sesi lain (sekali sesi orang lain dari jam sebelumnya, sekali hasil test sendiri 15 menit sebelumnya) karena tidak ada yang memastikan file itu benar-benar baru ditulis sebelum dipercaya. Fix: nama file kini disisipi `${TAG}` (basename transkrip, = session UUID untuk jalur env/nonce) sehingga tabrakan lintas sesi mustahil secara struktural; ditambah assertion `session_id` digest harus cocok sesi yang diresolve, atau STOP. Tidak ada perubahan bentuk payload/kontrak API.
 
 ## Install & Update
 
@@ -47,7 +70,7 @@ Install (sekali):
 /plugin install grademe@venturo-tools
 ```
 
-Update ke versi terbaru (0.3.0) — update katalog dulu, baru plugin-nya:
+Update ke versi terbaru (0.4.1) — update katalog dulu, baru plugin-nya:
 ```
 /plugin marketplace update venturo-tools
 /plugin update grademe@venturo-tools
@@ -56,7 +79,7 @@ Atau dari shell:
 ```bash
 claude plugin update grademe@venturo-tools
 ```
-Cek versi terpasang: `/plugin list` → pastikan grademe `0.3.0`. Aktifkan tanpa restart: `/reload-plugins` (atau restart Claude Code).
+Cek versi terpasang: `/plugin list` → pastikan grademe `0.4.1`. Aktifkan tanpa restart: `/reload-plugins` (atau restart Claude Code).
 
 ## Upload skor (env var)
 
