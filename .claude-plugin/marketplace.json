@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Claude Code plugin marketplace by Venturo - Professional development tools and automation utilities",
-    "version": "1.0.9",
+    "version": "1.0.10",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -133,8 +133,8 @@
     {
       "name": "grademe",
       "source": "./plugins/grademe",
-      "description": "Grades a Claude Code session against the 7-dimension vibe-coding rubric; outputs scored JSON + Bahasa Indonesia coaching. v0.3.0: mandatory live-session grading (env/nonce detection ladder), digest.py preprocessing (~10-160x smaller than raw JSONL), session_name + compacted flag in output, endpoint pindah ke venturo.pro.",
-      "version": "0.3.0",
+      "description": "Grades a Claude Code session against the 7-dimension vibe-coding rubric; outputs scored JSON + Bahasa Indonesia coaching. v0.4.1: fix bug nyata — file sementara /tmp/grademe_digest.json dkk kini per-transkrip alih-alih path fixed, mencegah grading membaca digest/submission basi milik sesi lain. v0.4.0: prompt_analysis kini dikirim (v0.3.0 keliru men-strip-nya), plus usage_totals, type_counts, dan grademe_version. v0.3.0: mandatory live-session grading (env/nonce detection ladder), digest.py preprocessing (~10-160x smaller than raw JSONL), session_name + compacted flag in output, endpoint pindah ke venturo.pro.",
+      "version": "0.4.1",
       "author": {
         "name": "Venturo",
         "email": "dev@venturo.id"

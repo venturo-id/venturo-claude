@@ -9,6 +9,10 @@ Grade the USER's practice in a session transcript against the locked 7-dimension
 
 **Never grade from this conversation's memory.** Grading MUST run in a dispatched subagent that reads the digest file (self-grading bias otherwise).
 
+**v0.4.1:** file sementara (`/tmp/grademe_digest*.json`, `_submission*.json`, `_upload*.json`) kini diberi suffix `${TAG}` per-transkrip, bukan path fixed. Fix untuk bug nyata: path fixed lama menyebabkan grading membaca digest/submission BASI milik sesi/peserta LAIN yang kebetulan masih ada di `/tmp` dari run sebelumnya (ditemukan 2× dalam testing E2E — sekali membaca sesi orang lain dari pagi harinya, sekali membaca hasil test sendiri 15 menit sebelumnya). Ditambah assertion wajib: `session_id` digest harus cocok dengan sesi yang diresolve di langkah 1, atau STOP.
+
+**v0.4.0:** payload upload lengkap — `prompt_analysis` kini DIKIRIM (v0.3.0 keliru men-strip-nya sebelum POST), ditambah `usage_totals`, `type_counts`, dan `grademe_version` dari digest; array `events` tetap tidak pernah dikirim; fallback strip-on-400 dihapus.
+
 **v0.3.0:** grading sesi live yang sedang berjalan kini wajib (default target, bukan opt-in lagi); transcript dipreprocess jadi digest ringkas sebelum dispatch (hemat token besar-besaran); output subagent bertambah `session_name` + `compacted`; endpoint leaderboard pindah ke venturo.pro.
 
 ## Workflow
@@ -21,16 +25,24 @@ Grade the USER's practice in a session transcript against the locked 7-dimension
 
    Skip sidechain/subagent transcript entries — kini ditangani otomatis oleh `digest.py` (lihat langkah 3), tidak perlu difilter manual di sini.
 
+   **Setelah transcript path didapat, hitung `TAG`** (dipakai di semua nama file sementara langkah 3+):
+   ```bash
+   TAG=$(basename "<TRANSCRIPT_PATH>" .jsonl)
+   ```
+   Untuk jalur env var/nonce, `TAG` = session UUID itu sendiri (nama file transcript = `<SESSION_ID>.jsonl`). Untuk `--transcript`, `TAG` = nama file yang diberikan. Ini WAJIB — lihat catatan v0.4.1 di langkah 3 untuk alasannya (bug nyata: file sementara bertabrakan lintas sesi).
+
 2. **Resolve participant**: dari `--participant`, else tanya user, else `"unknown"`.
 
 3. **Preprocess** (main agent, sebelum dispatch — jangan skip, ini yang membuat grading hemat token):
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/digest.py" "<TRANSCRIPT_PATH>" > /tmp/grademe_digest.json
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/digest.py" "<TRANSCRIPT_PATH>" > "/tmp/grademe_digest_${TAG}.json"
    ```
    (Di dev checkout tanpa `CLAUDE_PLUGIN_ROOT` di environment, resolve `scripts/digest.py` relatif dari direktori plugin ini.)
+   - **v0.4.1 — WAJIB, jangan skip perintah ini walau file dengan nama itu sudah tampak ada.** Sebelum ada `TAG` per-transkrip (v0.4.0 ke bawah), path ini FIXED (`/tmp/grademe_digest.json`, sama untuk SEMUA sesi/peserta/waktu di mesin yang sama) — dua insiden nyata terjadi di mana grading yang seharusnya baru justru membaca digest/submission BASI milik sesi lain yang kebetulan masih ada di `/tmp` dari run sebelumnya (lintas percakapan, bahkan lintas peserta), karena tidak ada yang memverifikasi file itu benar-benar baru ditulis oleh eksekusi bash di atas SEBELUM dipercaya. Nama file kini disisipi `${TAG}` (per transkrip) justru untuk membuat tabrakan seperti itu mustahil secara struktural — tapi itu hanya berguna kalau baris `python3 digest.py ... > file` di atas benar-benar DIEKSEKUSI setiap kali, bukan diasumsikan sudah dilakukan karena file dengan nama itu "kelihatannya" sudah ada dari langkah sebelumnya di respons yang sama.
    - Exit code 2 → format transkrip bukan Claude Code JSONL (harness lain belum didukung). Laporkan ke user, STOP.
    - Exit code lain ≠0, atau `session_id`/`events` kosong pada output → laporkan error, JANGAN dispatch subagent (hemat 1 pemanggilan yang pasti sia-sia).
    - Baca hanya metadata kecil dari digest (`session_id`, `session_name`, `compacted`, `transcript_meta`) via `python3 -c` one-liner atau `head` — JANGAN load seluruh isi digest ke context main agent.
+   - **Assert sebelum lanjut:** `session_id` di digest HARUS sama dengan session id yang diresolve di langkah 1 (env var `$CLAUDE_CODE_SESSION_ID`, atau session id dari file yang match nonce, atau `sessionId` di baris pertama transcript untuk `--transcript`). Tidak sama → STOP, laporkan sebagai bug ("digest tidak sesuai sesi yang diminta"), JANGAN lanjut ke dispatch. Ini jaring pengaman kedua di luar `TAG`, untuk kasus `TAG` kebetulan sama (mis. dua override `--transcript` beda isi tapi nama file sama).
    - Nilai `compacted` diteruskan ke prompt subagent di langkah 4.
 
 4. **Dispatch grader**: spawn satu subagent (Task/Agent tool, general-purpose) dengan prompt template di bawah, placeholder terisi. Jangan meringkas digest untuk subagent — biarkan ia baca sendiri.
@@ -40,7 +52,7 @@ Grade the USER's practice in a session transcript against the locked 7-dimension
 ## Grader subagent prompt template
 
 ````
-You are a fresh grader. Read the digest file at /tmp/grademe_digest.json (a preprocessed, faithful extraction of the session transcript) and grade the USER's vibe-coding practice. Participant: {PARTICIPANT}.
+You are a fresh grader. Read the digest file at /tmp/grademe_digest_{TAG}.json (a preprocessed, faithful extraction of the session transcript) and grade the USER's vibe-coding practice. Participant: {PARTICIPANT}.
 
 The digest contains ALL user messages verbatim in full, assistant text, tool_use entries (name/id/summary — for Bash the `command` field is verbatim), tool_result metadata (character count and ok/error signal, without the body), type_counts, and usage_totals. This is sufficient for every dimension of the rubric below. Do NOT read any other file.
 
@@ -87,14 +99,14 @@ Return ONLY this JSON (field names/types exact; breakdown values sum to total_sc
 - Each breakdown value ≤ its max (20/20/15/15/15/10/5); values sum to `total_score`.
 - `misses` non-empty → `total_score` ≤ 94; `misses` empty → `total_score` ≥ 95. Violation → re-dispatch.
 - Citation check: `grep` the ORIGINAL transcript file (not the digest) for each miss's quoted string / tool id (grep only — do not read the transcript). This still works because the digest passes through the same verbatim fields the citations quote from. Citation not found → strip that item; >1 citation fails → reject the output.
-- Re-dispatch (if needed, once, with the validation error appended) reuses the SAME digest already at `/tmp/grademe_digest.json` — do not regenerate it or re-read the raw JSONL.
+- Re-dispatch (if needed, once, with the validation error appended) reuses the SAME digest already at `/tmp/grademe_digest_${TAG}.json` — do not regenerate it or re-read the raw JSONL. ("Reuse" here means within THIS same grading run, right after the first dispatch — not "reuse across separate /grademe invocations"; a new invocation always regenerates per the v0.4.1 note in step 3.)
 - `participant` is self-reported and unverified — say so in the narrative.
 
 ## Presenting
 
-After the fenced JSON, add one provenance line in the narrative: transcript path, sessionId, `session_name`, discovered vs explicitly passed (`sumber: sesi-aktif (env)` / `sumber: sesi-aktif (nonce)` / `sumber: manual (--transcript)`), file mtime, line count. If the leaderboard submission path rejects `prompt_analysis`, submit contract fields only and show prompt_analysis to the user separately.
+After the fenced JSON, add one provenance line in the narrative: transcript path, sessionId, `session_name`, discovered vs explicitly passed (`sumber: sesi-aktif (env)` / `sumber: sesi-aktif (nonce)` / `sumber: manual (--transcript)`), file mtime, line count.
 
-## Upload ke leaderboard (otomatis, v0.3.0)
+## Upload ke leaderboard (otomatis, v0.4.1)
 
 Setelah grading selesai dan skor ditampilkan: cek env `VIBESCORE_API_URL` + `VIBESCORE_API_KEY`. **Keduanya ada → upload otomatis**, tidak perlu flag apa pun. Flag `--upload` tetap diterima untuk backward compat, tapi kini redundan (upload sudah otomatis bila env lengkap).
 
@@ -108,24 +120,27 @@ Flag baru `--no-upload`: grade lokal saja, skip upload walau env lengkap.
 Steps after validation passes:
 
 1. **Build submission body** dari JSON hasil grading — contract fields lama, ditambah:
-   - Strip `prompt_analysis` (leaderboard contract has no such field; show it to the user separately). BACKLOG #7: API mengabaikan field tak dikenal, tapi strip tetap eksplisit.
+   - **KIRIM `prompt_analysis` apa adanya — JANGAN di-strip.** BE menyimpannya ke kolom `prompt_analysis` jsonb dan FE menampilkannya. Instruksi strip di v0.3.0 adalah bug: hasil analisis paling bernilai dari seluruh grading justru dibuang tepat sebelum upload.
    - `session_id` — kini langsung dari digest (`session_id` top-level field), bukan lagi diturunkan; digest sudah fallback ke nama file bila transcript tak punya `sessionId` sendiri, jadi tidak perlu lagi hash manual di sini.
-   - Field baru: `session_name`, `compacted`, `transcript_meta` (object dari digest: `line_count`, `byte_size`, `sha256_prefix`, `first_timestamp`, `last_timestamp`).
+   - Dari digest, salin apa adanya: `session_name`, `compacted`, `transcript_meta` (`line_count`, `byte_size`, `sha256_prefix`, `first_timestamp`, `last_timestamp`), `usage_totals` (`input_tokens`, `output_tokens`, `cache_read_input_tokens`), `type_counts` (histogram jenis record).
+   - `grademe_version`: string literal `"0.4.1"` — samakan dengan `version` di `.claude-plugin/plugin.json`. Ini yang membuat BE bisa membedakan "peserta pakai skill lama" dari "digest gagal menghasilkan data".
+   - **JANGAN kirim array `events`.** Isinya teks prompt user verbatim (privasi — payload ini masuk ke leaderboard bersama) dan bisa menembus batas body 256KB BE. Digest tetap memakainya secara lokal untuk grading.
    - `participant` boleh apa adanya (server override dari key) — jangan bergantung padanya.
+   - **Tulis hasilnya ke `/tmp/grademe_submission_${TAG}.json`** (bukan path fixed tanpa tag — lihat v0.4.1 note di langkah 3).
 2. **POST** via one Bash `curl` (jangan cetak nilai key):
    ```bash
-   curl -sS -o /tmp/grademe_upload.json -w '%{http_code}' \
+   curl -sS -o "/tmp/grademe_upload_${TAG}.json" -w '%{http_code}' \
      -X POST "$VIBESCORE_API_URL/scores" \
      -H "Content-Type: application/json" \
      -H "X-API-Key: $VIBESCORE_API_KEY" \
-     --data @/tmp/grademe_submission.json
+     --data @"/tmp/grademe_submission_${TAG}.json"
    ```
+   (Submission body ditulis ke `/tmp/grademe_submission_${TAG}.json` di langkah 1 sebelumnya — sama-sama pakai `${TAG}` per alasan v0.4.1 di langkah 3.)
 3. **Report by status** (apa adanya, jangan retry membabi-buta):
    - `201` → "Skor terkirim ke leaderboard." + `participant` + `id` dari respons.
    - `409` → "Sesi ini sudah pernah di-upload (dedup session_id) — skor tidak digandakan."
    - `401` → "VIBESCORE_API_KEY tidak valid/absen — skor TIDAK terkirim."
-   - `400` dengan body yang mengindikasikan field tak dikenal (mengandung kata unknown/unexpected field) → strip `session_name`, `compacted`, `transcript_meta` dari body, resubmit SEKALI, lalu beritahu user "BE belum menerima field baru — skor terkirim tanpa metadata tambahan".
-   - `400` lain → tampilkan `error` dari body (payload ditolak kontrak), jangan retry.
+   - `400` → tampilkan `error` dari body apa adanya, jangan retry. (v0.4.0: fallback strip-and-resubmit v0.3.0 DIHAPUS. Premisnya salah — BE mengabaikan field tak dikenal secara arsitektural, jadi ia tidak pernah membalas 400 "unknown field". Yang riil adalah pelanggaran kontrak seperti `total_score` ≠ jumlah breakdown; resubmit tanpa metadata hanya gagal lagi sambil menampilkan pesan menyesatkan.)
    - lainnya / curl gagal → laporkan kode + pesan, jangan diam.
 
 ## Catatan model & kecepatan
