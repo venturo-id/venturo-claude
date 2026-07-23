@@ -18,9 +18,11 @@ Run at end of a Claude Code session → analyzes the session chat against the 7-
 | Efisiensi Token | 10 |
 | Dokumentasi | 5 |
 
+**v0.5.0 — `Delegasi & Tooling` kini mengukur orkestrasi skill & subagent secara terukur** dari sinyal ground-truth transkrip (bukan sekadar hitungan): **D1** subagent (dipakai vs decoy, distinct vs spam), **D2** skill (dwell-turn, user-initiated via slash-command vs agent self-rescue), **D3** MCP/plugin. Sesi tanpa skill **dan** tanpa subagent dibatasi ≤6/15. Skor bertumpu pada `toolUseResult`/`attributionSkill` — field yang tidak diketik peserta, jadi sukar dipalsukan. Bobot 7 dimensi tidak berubah (total tetap 100).
+
 ## Submission JSON (contract with vibescore-api — do not change without updating api)
 
-Sumber kebenaran kontrak = `openapi.yaml` di repo `vibescore-be`, schema `ScoreSubmission`. Bentuk v0.4.1 (sama dengan v0.4.0 — v0.4.1 hanya mengubah nama file /tmp sementara, bukan bentuk payload):
+Sumber kebenaran kontrak = `openapi.yaml` di repo `vibescore-be`, schema `ScoreSubmission`. Bentuk v0.5.0 — `breakdown` tetap 7 int seperti v0.4.x (byte-compatible); v0.5.0 hanya **menambah** field top-level `tool_usage` + `signal_availability` yang diserap BE ke kolom `raw_payload` (tanpa perubahan skema/BE):
 
 ```json
 {
@@ -49,13 +51,16 @@ Sumber kebenaran kontrak = `openapi.yaml` di repo `vibescore-be`, schema `ScoreS
     "input_tokens": 0, "output_tokens": 0, "cache_read_input_tokens": 0
   },
   "type_counts": {"user": 0, "assistant": 0},
-  "grademe_version": "0.4.1"
+  "tool_usage": {"skills": [], "subagents": [], "dispatch_totals": {}, "mcp": {}, "plan_mode": {}},
+  "signal_availability": {"cc_version": "string", "has_tool_use_result": true, "has_attribution": true},
+  "grademe_version": "0.5.0"
 }
 ```
 
-Field di bawah `misses`/`next_session_advice` semuanya opsional dari sisi server — BE lama maupun baru menerima payload tanpa field-field itu (balas 201, field yang tak dikenal diabaikan). `participant` diabaikan untuk identitas; server memakai `X-API-Key`. Array `events` dari digest **tidak pernah** dikirim.
+Field di bawah `misses`/`next_session_advice` semuanya opsional dari sisi server — BE lama maupun baru menerima payload tanpa field-field itu (balas 201, field yang tak dikenal diabaikan). `participant` diabaikan untuk identitas; server memakai `X-API-Key`. Array `events` dari digest **tidak pernah** dikirim. `tool_usage` (v0.5.0) DIKIRIM sebagai field top-level non-scoring (agregat ringkas, beberapa KB, tanpa teks prompt verbatim) → tersimpan di `raw_payload`.
 
 ## Versions
+- **v0.5.0:** dimensi `delegation` menilai orkestrasi skill & subagent (D1 subagent / D2 skill / D3 MCP); sesi tanpa skill+subagent ≤6/15. `digest.py` kini membaca `toolUseResult` (telemetri subagent: dipakai vs decoy), `attributionSkill` (dwell-turn), `attachment` terpilih, dan sidecar `subagents/`, lalu meng-emit `tool_usage` + `signal_availability`. Anti-gaming: skor pada **consumed × distinct**, bukan hitungan mentah. Laundering `compacted` via teks prosa ditutup; `ERROR_RE` diperluas + flag `suppressed` (`|| true` dkk). Prompt grader: calibration anchor per band + evidence-first ordering (lawan ceiling-drift). Kontrak payload byte-compatible (breakdown tetap 7 int) — `tool_usage` naik sbg field top-level → `raw_payload`, tanpa perubahan BE/DB.
 - **v0.1 (needed Mg 1):** local scoring + JSON + narrative. Install via marketplace `venturo-tools` (`venturo-id/venturo-claude`).
 - **v0.2 (needed Mg 6):** `--upload` flag → POST JSON to vibescore-api with participant API key.
 - **v0.3.0:** mandatory live-session grading (detection ladder: env var → nonce self-id → explicit `--transcript` → strict fail; auto-discovery removed); `scripts/digest.py` preprocessing (raw JSONL → compact digest, ~10–160× smaller — subagent reads digest, not raw transcript); new output fields `session_name` + `compacted`; endpoint moved to `venturo.pro` (`vibescore-be.venturo.pro` API, `vibescore.venturo.pro` leaderboard + token page).
@@ -70,7 +75,7 @@ Install (sekali):
 /plugin install grademe@venturo-tools
 ```
 
-Update ke versi terbaru (0.4.1) — update katalog dulu, baru plugin-nya:
+Update ke versi terbaru (0.5.0) — update katalog dulu, baru plugin-nya:
 ```
 /plugin marketplace update venturo-tools
 /plugin update grademe@venturo-tools
@@ -79,7 +84,7 @@ Atau dari shell:
 ```bash
 claude plugin update grademe@venturo-tools
 ```
-Cek versi terpasang: `/plugin list` → pastikan grademe `0.4.1`. Aktifkan tanpa restart: `/reload-plugins` (atau restart Claude Code).
+Cek versi terpasang: `/plugin list` → pastikan grademe `0.5.0`. Aktifkan tanpa restart: `/reload-plugins` (atau restart Claude Code).
 
 ## Upload skor (env var)
 
