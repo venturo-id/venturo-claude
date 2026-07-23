@@ -19,7 +19,7 @@ Add the marketplace, then install any plugin:
 | [venturo-react](plugins/venturo-react) | 1.0.0 | React frontend automation — generate features from OpenAPI specs (TypeScript, MUI, React Query). |
 | [venturo-planner](plugins/venturo-planner) | 1.0.0 | Database & API planning — ERD, DBML, PostgreSQL migrations, and API contracts following audit standards. |
 | [venturo-e2e-web](plugins/venturo-e2e-web) | 1.0.5 | Playwright E2E testing — auto-scenario generation and validation. |
-| [grademe](plugins/grademe) | 0.3.0 | Vibe-coding session scoring against a 7-dimension rubric with Bahasa Indonesia coaching. v0.3: mandatory live-session grading, digest preprocessing (token-efficient), auto-upload to the venturo.pro leaderboard when a participant token is set. |
+| [grademe](plugins/grademe) | 0.5.0 | Vibe-coding session scoring against a 7-dimension rubric with Bahasa Indonesia coaching. v0.5: dimensi delegation menilai orkestrasi skill & subagent (D1/D2/D3) dari sinyal ground-truth yang sukar dipalsukan; digest emit tool_usage; mandatory live-session grading, digest preprocessing (token-efficient), auto-upload ke leaderboard venturo.pro saat token peserta terpasang. |
 
 Each plugin's own README documents its commands and workflows.
 
