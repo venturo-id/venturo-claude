@@ -24,7 +24,7 @@ Grade the USER's practice in a session transcript against the locked 7-dimension
 1. **Resolve the ACTIVE session** (detection ladder — coba berurutan, berhenti di langkah pertama yang berhasil):
    1. **Env var.** Bash `echo "$CLAUDE_CODE_SESSION_ID"`. Non-empty → transcript = `~/.claude/projects/<cwd-slug>/<SESSION_ID>.jsonl`, di mana slug = cwd path dengan tiap `/` diganti `-` (aturan lama, mis. `/Users/a/proj` → `-Users-a-proj`). `test -f` pada path itu wajib; kalau tidak ada, laporkan path yang dicari — JANGAN pilih file lain sebagai gantinya.
    2. **Nonce self-identification** (fallback bila env var kosong — CC lama atau harness lain). Generate nonce `GRADEME-NONCE-$(openssl rand -hex 3)`, ucapkan nonce itu dalam reply visible ke user (satu baris pendek), tunggu ~2 detik, lalu grep nonce tersebut pada file `*.jsonl` ber-mtime <60 detik di `~/.claude/projects/<cwd-slug>/` dan `~/.codex/sessions/**/`. Tepat 1 file match → itu sesi aktif (terbukti lewat bukti tertulis, bukan tebakan). 0 match → retry grep sekali lagi setelah 2 detik tambahan. Masih 0 atau >1 match → lanjut ke langkah 4.
-   3. **Override eksplisit.** `/grademe --transcript <path>` → pakai path itu apa adanya (jalur dev/QA/instruktur; satu-satunya cara menilai file selain sesi aktif). `--participant <nama>` men-set nama peserta.
+   3. **Override eksplisit.** `/grademe --transcript <path>` → pakai path itu apa adanya (jalur dev/QA/instruktur; satu-satunya cara menilai file selain sesi aktif).
    4. **Strict fail.** "Tidak bisa mendeteksi sesi aktif — /grademe hanya menilai sesi yang sedang berjalan. Gunakan `/grademe --transcript <path>` untuk menilai file tertentu." STOP, jangan lanjut grading.
 
    Skip sidechain/subagent transcript entries — kini ditangani otomatis oleh `digest.py` (lihat langkah 3), tidak perlu difilter manual di sini.
@@ -35,7 +35,7 @@ Grade the USER's practice in a session transcript against the locked 7-dimension
    ```
    Untuk jalur env var/nonce, `TAG` = session UUID itu sendiri (nama file transcript = `<SESSION_ID>.jsonl`). Untuk `--transcript`, `TAG` = nama file yang diberikan. Ini WAJIB — lihat catatan v0.4.1 di langkah 3 untuk alasannya (bug nyata: file sementara bertabrakan lintas sesi).
 
-2. **Resolve participant**: dari `--participant`, else tanya user, else `"unknown"`.
+2. **Resolve participant**: tanya user, else `"unknown"` (identitas sebenarnya berasal dari API key di server).
 
 3. **Preprocess** (main agent, sebelum dispatch — jangan skip, ini yang membuat grading hemat token):
    ```bash
@@ -162,7 +162,6 @@ Setelah grading selesai dan skor ditampilkan: cek env `VIBESCORE_API_URL` + `VIB
 
 Salah satu/keduanya absen → tampilkan skor, skip upload (bukan error), dan beritahu user cara mengaktifkan: generate token di `https://vibescore.venturo.pro/participants/`, lalu export kedua env var berikut. Do NOT invent a URL or key.
 
-Flag baru `--no-upload`: grade lokal saja, skip upload walau env lengkap.
 
 - `VIBESCORE_API_URL` — base URL vibescore-api (mis. `https://vibescore-be.venturo.pro`).
 - `VIBESCORE_API_KEY` — key peserta. **Identitas berasal dari key ini, bukan field `participant`** (BACKLOG #1). Key salah/absen → server balas 401.
