@@ -4,25 +4,25 @@
 
 **Role in main objective:** the flywheel engine. /grademe score → leaderboard → competition → behavior change. Also the program KPI: rata-rata score naik dari battle #1 ke battle final. If scoring is inconsistent, the whole program's measurement collapses.
 
+**Status pipeline (2026-07-20):** rantai data kini utuh ujung ke ujung — field v0.4.x (`prompt_analysis`, `usage_totals`, `type_counts`, `grademe_version`) tersimpan di `vibescore-be` (v0.10.0, live production) DAN sudah tampil nyata di FE `vibescore.venturo.pro/p/[id]` (analisis prompt, statistik token, indikator sesi *compacted*). Sebelumnya field-field ini sempat tersimpan tapi tak pernah dirender di mana pun — lihat `docs/05-decision-log.md` di `vibescore-be` dan `README.md` `vibescore-fe` untuk detail masing-masing sisi.
+
 ## What it does
 Run at end of a Claude Code session → analyzes the session chat against the 7-dimension rubric → outputs JSON + narrative summary.
 
 ## Rubric (locked, total 100)
 | Dimensi | Bobot |
 |---|---|
-| Planning First | 20 |
-| Context Quality | 20 |
+| Planning First | 15 |
+| Context Quality | 15 |
 | Task Decomposition | 15 |
-| Delegasi & Tooling | 15 |
-| Verifikasi | 15 |
-| Efisiensi Token | 10 |
+| Delegasi & Tooling | 18 |
+| Verifikasi | 20 |
+| Efisiensi Token | 12 |
 | Dokumentasi | 5 |
-
-**v0.5.0 — `Delegasi & Tooling` kini mengukur orkestrasi skill & subagent secara terukur** dari sinyal ground-truth transkrip (bukan sekadar hitungan): **D1** subagent (dipakai vs decoy, distinct vs spam), **D2** skill (dwell-turn, user-initiated via slash-command vs agent self-rescue), **D3** MCP/plugin. Sesi tanpa skill **dan** tanpa subagent dibatasi ≤6/15. Skor bertumpu pada `toolUseResult`/`attributionSkill` — field yang tidak diketik peserta, jadi sukar dipalsukan. Bobot 7 dimensi tidak berubah (total tetap 100).
 
 ## Submission JSON (contract with vibescore-api — do not change without updating api)
 
-Sumber kebenaran kontrak = `openapi.yaml` di repo `vibescore-be`, schema `ScoreSubmission`. Bentuk v0.5.0 — `breakdown` tetap 7 int seperti v0.4.x (byte-compatible); v0.5.0 hanya **menambah** field top-level `tool_usage` + `signal_availability` yang diserap BE ke kolom `raw_payload` (tanpa perubahan skema/BE):
+Sumber kebenaran kontrak = `openapi.yaml` di repo `vibescore-be`, schema `ScoreSubmission`. Bentuk v0.6.0 (breakdown tetap 7 int seperti v0.4.x/v0.5.0 — v0.6.0 hanya MENAMBAH field top-level `first_user_prompt`+`work_evidence`+`score_caps`, sama seperti `tool_usage`+`signal_availability` di v0.5.0, semuanya diserap BE ke `raw_payload` tanpa perubahan skema; bentuk lama tetap valid):
 
 ```json
 {
@@ -51,16 +51,24 @@ Sumber kebenaran kontrak = `openapi.yaml` di repo `vibescore-be`, schema `ScoreS
     "input_tokens": 0, "output_tokens": 0, "cache_read_input_tokens": 0
   },
   "type_counts": {"user": 0, "assistant": 0},
-  "tool_usage": {"skills": [], "subagents": [], "dispatch_totals": {}, "mcp": {}, "plan_mode": {}},
-  "signal_availability": {"cc_version": "string", "has_tool_use_result": true, "has_attribution": true},
-  "grademe_version": "0.5.0"
+  "tool_usage": { "skills": [], "subagents": [], "dispatch_totals": {}, "mcp": {}, "plan_mode": {} },
+  "signal_availability": { "cc_version": "string", "has_tool_use_result": true, "has_attribution": true },
+  "first_user_prompt": "string",
+  "work_evidence": {
+    "duration_minutes": 0, "user_turns": 0, "assistant_turns": 0,
+    "error_events": 0, "errors_followed_up": 0, "plan_revisions": 0,
+    "friction_present": false
+  },
+  "score_caps": { "cap": 98, "reasons": [] },
+  "grademe_version": "0.6.0"
 }
 ```
 
-Field di bawah `misses`/`next_session_advice` semuanya opsional dari sisi server — BE lama maupun baru menerima payload tanpa field-field itu (balas 201, field yang tak dikenal diabaikan). `participant` diabaikan untuk identitas; server memakai `X-API-Key`. Array `events` dari digest **tidak pernah** dikirim. `tool_usage` (v0.5.0) DIKIRIM sebagai field top-level non-scoring (agregat ringkas, beberapa KB, tanpa teks prompt verbatim) → tersimpan di `raw_payload`.
+Field di bawah `misses`/`next_session_advice` semuanya opsional dari sisi server — BE lama maupun baru menerima payload tanpa field-field itu (balas 201, field yang tak dikenal diabaikan). `participant` diabaikan untuk identitas; server memakai `X-API-Key`. Array `events` dari digest **tidak pernah** dikirim. `tool_usage` (v0.5.0) DAN `first_user_prompt`/`work_evidence`/`score_caps` (v0.6.0) DIKIRIM sebagai field top-level non-scoring — BE menyimpannya di `raw_payload` tanpa perubahan skema; breakdown tetap 7 int.
 
 ## Versions
-- **v0.5.0:** dimensi `delegation` menilai orkestrasi skill & subagent (D1 subagent / D2 skill / D3 MCP); sesi tanpa skill+subagent ≤6/15. `digest.py` kini membaca `toolUseResult` (telemetri subagent: dipakai vs decoy), `attributionSkill` (dwell-turn), `attachment` terpilih, dan sidecar `subagents/`, lalu meng-emit `tool_usage` + `signal_availability`. Anti-gaming: skor pada **consumed × distinct**, bukan hitungan mentah. Laundering `compacted` via teks prosa ditutup; `ERROR_RE` diperluas + flag `suppressed` (`|| true` dkk). Prompt grader: calibration anchor per band + evidence-first ordering (lawan ceiling-drift). Kontrak payload byte-compatible (breakdown tetap 7 int) — `tool_usage` naik sbg field top-level → `raw_payload`, tanpa perubahan BE/DB.
+- **v0.6.0 (anti-gaming):** menutup gaming prompt sintetis & telemetri palsu yang ditemukan di data produksi. Bobot rubrik direbalance (planning 20→15, context 20→15, delegation 15→18, verification 15→20, token_efficiency 10→12; decomposition 15 & documentation 5 tetap; total tetap 100). `misses` WAJIB ≥2 di SETIAP sesi → `total_score` efektif maks **98** (aturan lama "misses kosong ↔ ≥95" **dihapus total**). `score_caps` digest jadi hard gate: sesi <15 menit/<5 user turn → cap 85; tanpa friksi tertangani → cap 89. Deteksi prompt rubric-engineered dari `first_user_prompt`+`work_evidence` (sesi pameran, bukan sesi kerja) → planning+context ditahan mid band. `scripts/validate.py` (mekanis, non-LLM) jadi gerbang final wajib sebelum presentasi/upload — `digest.py` exit non-zero = STOP TOTAL, tidak ada fallback "cerita sesi manual". Payload +`first_user_prompt`/`work_evidence`/`score_caps` (disalin persis dari digest, non-scoring); `grademe_version` → `0.6.0`. 3 fixture baru (`synthetic-prompt`, `unparseable`, `long-real`).
+- **v0.5.0:** dimensi `delegation` menilai orkestrasi skill & subagent secara terukur (D1 subagent / D2 skill / D3 MCP); sesi tanpa skill+subagent dibatasi ≤6/15. Penilaian bersandar pada sinyal ground-truth yang **tidak diarang peserta** → lebih sulit dipalsukan dari string TodoWrite/Bash: `toolUseResult` (subagent dipakai vs decoy `ttuc≤1`, distinct vs farming), `attributionSkill` dwell-turn (skill dipakai vs invoke-and-ignore), `<command-name>` user-initiated. `digest.py` kini membaca toolUseResult/atribusi/attachment/sidecar `subagents/` + emit `tool_usage`+`signal_availability`. Laundering `compacted` via teks prosa ditutup (hanya marker terstruktur / pesan pertama); `ERROR_RE` diperluas + flag `suppressed` (`|| true` dkk). Prompt grader dapat calibration anchor + evidence-first (lawan ceiling-drift). 4 fixture baru + `EXPECTED.md` dikalibrasi ulang; selftest 8/8. Kontrak payload byte-compatible (breakdown tetap 7 int) — `tool_usage` naik sbg field top-level → `raw_payload`, tanpa perubahan BE/DB.
 - **v0.1 (needed Mg 1):** local scoring + JSON + narrative. Install via marketplace `venturo-tools` (`venturo-id/venturo-claude`).
 - **v0.2 (needed Mg 6):** `--upload` flag → POST JSON to vibescore-api with participant API key.
 - **v0.3.0:** mandatory live-session grading (detection ladder: env var → nonce self-id → explicit `--transcript` → strict fail; auto-discovery removed); `scripts/digest.py` preprocessing (raw JSONL → compact digest, ~10–160× smaller — subagent reads digest, not raw transcript); new output fields `session_name` + `compacted`; endpoint moved to `venturo.pro` (`vibescore-be.venturo.pro` API, `vibescore.venturo.pro` leaderboard + token page).
@@ -75,7 +83,7 @@ Install (sekali):
 /plugin install grademe@venturo-tools
 ```
 
-Update ke versi terbaru (0.5.0) — update katalog dulu, baru plugin-nya:
+Update ke versi terbaru (0.6.0) — update katalog dulu, baru plugin-nya:
 ```
 /plugin marketplace update venturo-tools
 /plugin update grademe@venturo-tools
@@ -84,7 +92,7 @@ Atau dari shell:
 ```bash
 claude plugin update grademe@venturo-tools
 ```
-Cek versi terpasang: `/plugin list` → pastikan grademe `0.5.0`. Aktifkan tanpa restart: `/reload-plugins` (atau restart Claude Code).
+Cek versi terpasang: `/plugin list` → pastikan grademe `0.6.0`. Aktifkan tanpa restart: `/reload-plugins` (atau restart Claude Code).
 
 ## Upload skor (env var)
 
@@ -105,7 +113,8 @@ Cek versi terpasang: `/plugin list` → pastikan grademe `0.5.0`. Aktifkan tanpa
 - `.claude-plugin/plugin.json` — plugin manifest
 - `skills/grademe/SKILL.md` — the skill (rubric logic, output format)
 - `scripts/digest.py` — transcript preprocessor (JSONL → compact digest JSON, stdlib-only)
-- `test-transcripts/` — 3–5 sample sessions (bad / mid / good) used as scoring regression suite
+- `scripts/validate.py` — mechanical validation gate (v0.6.0): breakdown 7-int contract, `score_caps` enforcement, forensic verbatim check vs digest; wajib exit 0 sebelum presentasi/upload
+- `test-transcripts/` — sample sessions (bad / mid / good + adversarial/edge-case fixtures: `gamed`, `skill-real`, `skill-ritual`, `compacted`, `compacted-structured`, `synthetic-prompt`, `unparseable`, `long-real`) used as scoring regression suite
 
 ## Definition of done (v0.1)
 - [x] Scores the 3 test transcripts with stable, well-separated scores (bad 18–19 ≪ mid 62–66 ≪ good 94–98; 17 runs, 0 ordering violations) — see `test-transcripts/harness-results.md`
