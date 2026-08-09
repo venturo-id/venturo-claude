@@ -20,6 +20,48 @@ then
   arsenal_deny "rm -rf dilarang"
 fi
 
+# --- penghapusan yang menyiasati blok di atas ------------------------------
+# Ditemukan dry run K5 (2026-08-09), bukan review kode: `rm -rf ./src/config`
+# ditolak, lalu model MENCARI skrip guard-nya sendiri
+# (`find ~/.claude -path "*hooks/guard-bash.sh"`) dan mencapai hasil yang sama
+# lewat `rm a.ts b.ts c.ts` + `rmdir`. Folder tetap terhapus dan SELURUH
+# langkahnya tercatat `OK`. Memblokir cuma bentuk `rm -rf` = teater.
+#
+# Yang ditutup di sini adalah *kapabilitasnya*, bukan ejaan perintahnya:
+# rekursi direktori, hapus banyak berkas sekaligus, glob, dan find -delete.
+# `rm satu-berkas` tetap lolos — itu operasi harian, bukan operasi destruktif.
+OPERAND='[^-[:space:]&|;<>][^[:space:]&|;<>]*'
+FLAGS="(-[^[:space:]]+[[:space:]]+)*"
+
+# rm -r tanpa -f, dan rmdir: keduanya menghapus direktori.
+if printf '%s' "$ARSENAL_CMD" | grep -qE \
+  "${RM_BOUND}-[[:alnum:]]*[rR]|(^|[[:space:];&|(])rmdir[[:space:]]"
+then
+  arsenal_deny "hapus direktori dilarang"
+fi
+
+# rm dengan >=2 operand, atau operand ber-glob.
+if printf '%s' "$ARSENAL_CMD" | grep -qE \
+  "${RM_BOUND}${FLAGS}${OPERAND}[[:space:]]+${OPERAND}|\
+${RM_BOUND}${FLAGS}[^[:space:]&|;<>]*[*?]"
+then
+  arsenal_deny "hapus massal dilarang"
+fi
+
+# find … -delete / find … -exec rm — jalur ketiga ke hasil yang sama.
+if printf '%s' "$ARSENAL_CMD" | grep -qE \
+  "(^|[[:space:];&|(])find[[:space:]].*(-delete|-exec[[:space:]]+rm|-execdir[[:space:]]+rm)"
+then
+  arsenal_deny "hapus massal dilarang"
+fi
+
+# git clean -f/-d membuang berkas untracked tanpa jejak di git.
+if printf '%s' "$ARSENAL_CMD" | grep -qE \
+  "git[[:space:]]+clean([[:space:]].*)?[[:space:]]-[[:alnum:]]*[fdxFDX]"
+then
+  arsenal_deny "git clean paksa dilarang"
+fi
+
 # --- git push --force -----------------------------------------------------
 # "--force-with-lease" SENGAJA diloloskan: itu bentuk aman yang gagal kalau
 # remote sudah bergerak. Pola "--force([^-]|$)" tidak cocok dengannya karena

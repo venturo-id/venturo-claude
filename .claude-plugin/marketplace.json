@@ -6,15 +6,15 @@
   },
   "metadata": {
     "description": "Claude Code plugin marketplace by Venturo - Professional development tools and automation utilities",
-    "version": "1.0.13",
+    "version": "1.0.14",
     "pluginRoot": "./plugins"
   },
   "plugins": [
     {
       "name": "venturo-arsenal",
       "source": "./plugins/venturo-arsenal",
-      "description": "Paket standar tim Venturo dalam satu install - guard hook (tolak rm -rf, git push --force, dan baca/tulis .env dengan audit log), quality gate Go/TS, 3 subagent (api-contract-reader, code-reviewer, test-writer), 7 server MCP tim tanpa kredensial, skill venturo-arsenal-check + venturo-contract, dan arsenal-setup.sh yang idempotent untuk memasang sisa kurasi perkakas tim.",
-      "version": "1.0.0",
+      "description": "Paket standar tim Venturo dalam satu install - guard hook (tolak penghapusan destruktif, git push --force, dan baca/tulis .env dengan audit log), quality gate Go/TS, 3 subagent (api-contract-reader, code-reviewer, test-writer), 7 server MCP tim tanpa kredensial, skill venturo-arsenal-check + venturo-contract, dan arsenal-setup.sh yang idempotent untuk memasang sisa kurasi perkakas tim.",
+      "version": "1.0.1",
       "author": {
         "name": "Venturo",
         "email": "dev@venturo.id"

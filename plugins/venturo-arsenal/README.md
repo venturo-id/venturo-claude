@@ -111,7 +111,7 @@ detail.
 
 | Hook | Event | Yang dilakukan |
 |---|---|---|
-| `guard-bash.sh` | PreToolUse `Bash` | tolak `rm -rf`/`-fr`/`-r -f`, `git push --force` dan `-f` |
+| `guard-bash.sh` | PreToolUse `Bash` | tolak `rm -rf`/`-fr`/`-r -f`, `rm -r`, `rmdir`, `rm` banyak-berkas/ber-glob, `find … -delete`/`-exec rm`, `git clean -f/-d/-x`, `git push --force` dan `-f`, akses `.env`/rahasia lewat shell |
 | `guard-secrets.sh` | PreToolUse `Edit\|Write\|Read` | tolak `.env*`, `*.pem`, `*.key`, `id_rsa`, `credentials.json`, `secrets.*` |
 | `quality-go.sh` | PostToolUse `Edit\|Write` | `golangci-lint` + `go test` pada paket yang tersentuh |
 | `quality-ts.sh` | PostToolUse `Edit\|Write` | `eslint` + `vitest related` pada file yang tersentuh |
@@ -131,12 +131,34 @@ Dua hal yang sengaja dipilih dan gampang salah kalau kamu menyalinnya sendiri:
   meninggalkan jejak, padahal baris `OK` itulah buktinya bahwa yang menahan adalah izin
   tool, bukan pagar.
 
+- **Yang dijaga adalah kapabilitasnya, bukan ejaan perintahnya.** Versi 1.0.0 hanya
+  menolak bentuk `rm -rf`. Uji end-to-end 2026-08-09 menunjukkan apa yang terjadi
+  kemudian: penolakan itu benar muncul, lalu model **mencari sendiri skrip guard-nya**
+  (`find ~/.claude -path "*hooks/guard-bash.sh"`) dan mencapai hasil yang persis sama
+  lewat `rm a.ts b.ts c.ts` diikuti `rmdir`. Foldernya tetap terhapus, dan **seluruh
+  langkah pengganti itu tercatat `OK`**. Sejak 1.0.1 rekursi direktori, hapus massal,
+  glob, `find … -delete`, dan `git clean -f` ikut ditutup. `rm satu-berkas` sengaja tetap
+  lolos — itu operasi harian.
+
 Bentuk barisnya:
 
 ```
 2026-08-09T10:11:12+07:00 BLOCKED tool=Bash reason=rm -rf dilarang :: rm -rf ./src/config
 2026-08-09T10:11:13+07:00 OK tool=Bash :: npm run lint
 ```
+
+### Hook bukan sandbox — dua hal yang harus kamu tahu sebelum mengandalkannya
+
+**1. Guard adalah polisi tidur, bukan tembok.** Ia menaikkan biaya dan meninggalkan jejak;
+ia tidak menahan agen yang memang berniat lewat. Contoh di atas adalah buktinya, dan itu
+ditemukan pada plugin ini sendiri. Kalau yang kamu butuhkan adalah jaminan, pakai lapisan
+yang memang menjamin: izin tool, branch protection, backup, dan repo yang bersih commit-nya.
+
+**2. Path hook yang menggantung gagal-terbuka, tanpa suara.** Kalau `settings.json` masih
+menunjuk ke skrip hook yang sudah kamu hapus, Claude Code **tidak** memberi error dan
+**tidak** memblokir apa pun — aksinya jalan, dan `audit.log` tidak bertambah satu baris pun.
+Pagar yang mati diam-diam terlihat persis seperti pagar yang tak pernah dilanggar. Setelah
+mengutak-atik wiring hook, **picu pelanggaran sungguhan** untuk membuktikannya masih hidup.
 
 **Subagent** (`agents/`) — `api-contract-reader` (read-only, baca kontrak API tanpa
 mengotori konteks sesi utama) · `code-reviewer` · `test-writer`.
