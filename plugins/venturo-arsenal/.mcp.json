@@ -1,0 +1,55 @@
+{
+  "//": "MCP standar tim Venturo. NOL KREDENSIAL di file ini — rahasia lewat variabel lingkungan (${VAR}) atau OAuth saat connect pertama. Server yang butuh env tapi env-nya kosong akan gagal connect dan diabaikan; itu perilaku yang diinginkan, bukan error. Matikan yang tidak kamu pakai lewat /mcp atau disabledMcpjsonServers di settings — tujuh server dimuat di SETIAP sesi dan itu bukan gratis.",
+  "mcpServers": {
+    "github": {
+      "//": "GA sejak 2025-09-04. Tidak butuh seat Copilot. OAuth saat connect pertama; JANGAN tempel PAT di sini.",
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "X-MCP-Toolsets": "context,repos,issues,pull_requests,actions"
+      }
+    },
+
+    "supabase": {
+      "//": "read_only=true dan project ref DEV. JANGAN pernah arahkan ke ref production. Ref bukan rahasia, tapi tetap lewat env supaya tiap dev pakai proyeknya sendiri.",
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp?project_ref=${SUPABASE_PROJECT_REF}&read_only=true&features=docs,database,debugging"
+    },
+
+    "context7": {
+      "//": "Dokumentasi library versi terkini. Tanpa API key masih jalan dengan rate limit lebih ketat.",
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${CONTEXT7_API_KEY}"
+      }
+    },
+
+    "sentry": {
+      "//": "Error production nyata masuk ke sesi. OAuth saat connect pertama.",
+      "type": "http",
+      "url": "https://mcp.sentry.dev/mcp"
+    },
+
+    "chrome-devtools": {
+      "//": "Debug frontend di browser sungguhan: network, console, performance trace. Stabil 1.0 sejak 2026-05-19.",
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "chrome-devtools-mcp@latest"]
+    },
+
+    "playwright": {
+      "//": "Otomasi browser untuk E2E. Versi DIPIN — paket ini masih 0.x dan pernah breaking antar rilis patch; @latest di paket pra-1.0 adalah taruhan, bukan kemudahan. --isolated: profil bersih tiap sesi, tidak menyentuh browser harianmu.",
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@0.0.79", "--isolated", "--headless"]
+    },
+
+    "codebase-memory": {
+      "//": "Graph simbol repo: cari fungsi/route, telusuri call chain, ambil snippet presisi. Perlu index_repository sekali per repo.",
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "codebase-memory-mcp@latest"]
+    }
+  }
+}

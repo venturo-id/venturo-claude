@@ -1,0 +1,21 @@
+{
+  "name": "venturo-arsenal",
+  "version": "1.0.0",
+  "description": "Paket standar tim Venturo dalam satu install - 3 subagent (api-contract-reader, code-reviewer, test-writer), hook pack (guard .env/rm -rf/force-push dengan audit log, quality gate Go/TS), 7 MCP server tim tanpa kredensial, dan arsenal-setup.sh untuk memasang sisa kurasi skill tim",
+  "author": {
+    "name": "Venturo",
+    "email": "dev@venturo.id"
+  },
+  "license": "MIT",
+  "keywords": [
+    "standards",
+    "subagents",
+    "hooks",
+    "guard",
+    "audit-log",
+    "quality-gate",
+    "mcp",
+    "team-config",
+    "onboarding"
+  ]
+}
