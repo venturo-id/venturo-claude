@@ -6,10 +6,43 @@
   },
   "metadata": {
     "description": "Claude Code plugin marketplace by Venturo - Professional development tools and automation utilities",
-    "version": "1.0.12",
+    "version": "1.0.13",
     "pluginRoot": "./plugins"
   },
   "plugins": [
+    {
+      "name": "venturo-arsenal",
+      "source": "./plugins/venturo-arsenal",
+      "description": "Paket standar tim Venturo dalam satu install - guard hook (tolak rm -rf, git push --force, dan baca/tulis .env dengan audit log), quality gate Go/TS, 3 subagent (api-contract-reader, code-reviewer, test-writer), 7 server MCP tim tanpa kredensial, skill venturo-arsenal-check + venturo-contract, dan arsenal-setup.sh yang idempotent untuk memasang sisa kurasi perkakas tim.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Venturo",
+        "email": "dev@venturo.id"
+      },
+      "homepage": "https://github.com/venturo-id/venturo-claude/tree/production/plugins/venturo-arsenal",
+      "repository": "https://github.com/venturo-id/venturo-claude",
+      "license": "MIT",
+      "keywords": [
+        "standards",
+        "subagents",
+        "hooks",
+        "guard",
+        "audit-log",
+        "quality-gate",
+        "mcp",
+        "team-config",
+        "onboarding"
+      ],
+      "category": "development",
+      "tags": [
+        "team-standards",
+        "hooks",
+        "guard",
+        "mcp",
+        "onboarding",
+        "subagents"
+      ]
+    },
     {
       "name": "venturo-e2e-web",
       "source": "./plugins/venturo-e2e-web",
@@ -133,8 +166,8 @@
     {
       "name": "grademe",
       "source": "./plugins/grademe",
-      "description": "Grades a Claude Code session against the 7-dimension vibe-coding rubric; outputs scored JSON + Bahasa Indonesia coaching. v0.6.0 (anti-gaming): bobot rubrik direbalance (15/15/15/18/20/12/5); misses WAJIB ≥2 per sesi → total_score maks 98; score caps deterministik dari work_evidence (sesi pendek/tanpa friksi tertangani dibatasi); deteksi prompt sintetis dari first_user_prompt; scripts/validate.py jadi gerbang mekanis wajib sebelum upload; first_user_prompt dikirim ke leaderboard untuk audit; hard reject transcript non-Claude-Code. v0.5.0: dimensi delegation menilai orkestrasi skill & subagent secara terukur (D1 subagent / D2 skill / D3 MCP) dari sinyal ground-truth (toolUseResult, attributionSkill) yang sukar dipalsukan; sesi tanpa skill+subagent ≤6/15; digest.py emit tool_usage+signal_availability (→ raw_payload, tanpa perubahan BE); laundering compact ditutup; calibration anchor + evidence-first di prompt grader. v0.4.1: file sementara /tmp per-transkrip (fix baca digest basi lintas sesi). v0.4.0: prompt_analysis dikirim, plus usage_totals/type_counts/grademe_version. v0.3.0: mandatory live-session grading, digest.py preprocessing, session_name + compacted, endpoint venturo.pro.",
-      "version": "0.6.0",
+      "description": "Grades a Claude Code session against the 7-dimension vibe-coding rubric; outputs scored JSON + Bahasa Indonesia coaching. v0.7.x: skoring jadi deterministik penuh — seluruh perhitungan nilai pindah ke scripts/validate.py (`--score`), subagent grader hanya mengembalikan misses + saran, plus 25 counter anti-cheap-ritual dan applicability clamp untuk sesi tanpa kerja substantif. v0.6.0 (anti-gaming): bobot rubrik direbalance (15/15/15/18/20/12/5); misses WAJIB ≥2 per sesi → total_score maks 98; score caps deterministik dari work_evidence (sesi pendek/tanpa friksi tertangani dibatasi); deteksi prompt sintetis dari first_user_prompt; scripts/validate.py jadi gerbang mekanis wajib sebelum upload; first_user_prompt dikirim ke leaderboard untuk audit; hard reject transcript non-Claude-Code. v0.5.0: dimensi delegation menilai orkestrasi skill & subagent secara terukur (D1 subagent / D2 skill / D3 MCP) dari sinyal ground-truth (toolUseResult, attributionSkill) yang sukar dipalsukan; sesi tanpa skill+subagent ≤6/15; digest.py emit tool_usage+signal_availability (→ raw_payload, tanpa perubahan BE); laundering compact ditutup; calibration anchor + evidence-first di prompt grader. v0.4.1: file sementara /tmp per-transkrip (fix baca digest basi lintas sesi). v0.4.0: prompt_analysis dikirim, plus usage_totals/type_counts/grademe_version. v0.3.0: mandatory live-session grading, digest.py preprocessing, session_name + compacted, endpoint venturo.pro.",
+      "version": "0.7.2",
       "author": {
         "name": "Venturo",
         "email": "dev@venturo.id"
