@@ -177,6 +177,23 @@ prefix), `venturo-go`, `venturo-react`, `venturo-planner`, `venturo-e2e-web`.
 `claude-plugins-official`), plus binary `gopls`, `typescript-language-server`, dan
 `graphify` (paket Python `graphifyy`).
 
+### Pihak ketiga OPSIONAL — rekomendasi, default TIDAK dipasang
+
+Tahap `4b/6` menawarkan skill dari repo **perorangan** (di luar Anthropic). Karena menaikkan
+permukaan supply-chain, semuanya **default tidak dipasang**: ditanya `y/N` per-skill, sumber
+`owner/repo` dicetak, dan scope (user/project) ditanya per-skill. `--yes` sendirian **tidak**
+memicunya — pakai `--with-recommended` untuk memasang tanpa bertanya (mesin baru/otomasi),
+atau `--skip-external` untuk melewati semua.
+
+| Skill | Sumber | Guna |
+|---|---|---|
+| `ponytail` | `DietrichGebert/ponytail` | Tulis kode seminimal mungkin — hemat token (penghematan terukur) |
+| `ui-ux-pro-max` | `nextlevelbuilder/ui-ux-pro-max-skill` | DB desain lokal untuk frontend |
+| `impeccable` | `pbakaus/impeccable` | Audit & polish UI (install ~291 MB) |
+| `caveman` | `juliusbrussee/caveman` | Pangkas token gaya "caveman" (klaim −65% jauh di atas efek nyata yang diukur ulang ~−8.5%) |
+
+Rusak? Lapor ke upstream masing-masing — ini bukan buatan Venturo.
+
 ---
 
 ## Server MCP
