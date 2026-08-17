@@ -15,6 +15,7 @@
 #   --verify-only    hanya laporkan kondisi sekarang, nol pemasangan
 #   --local <path>   pasang dari marketplace lokal (folder berisi .claude-plugin/marketplace.json)
 #   --skip-external  hanya bagian buatan Venturo; lewati plugin & binary pihak ketiga
+#   --with-recommended  ikut pasang skill pihak-ketiga OPSIONAL tanpa bertanya (untuk --yes/otomasi)
 #   --scope <scope>  user (default) | project | local — sejauh mana pemasangan berlaku
 #   -h, --help       tampilkan ini
 #
@@ -33,6 +34,7 @@ DRY_RUN=0
 ASSUME_YES=0
 VERIFY_ONLY=0
 SKIP_EXTERNAL=0
+WITH_RECOMMENDED=0
 LOCAL_PATH=""
 SCOPE="user"
 
@@ -70,6 +72,7 @@ while [ $# -gt 0 ]; do
     --yes|-y)        ASSUME_YES=1 ;;
     --verify-only)   VERIFY_ONLY=1 ;;
     --skip-external) SKIP_EXTERNAL=1 ;;
+    --with-recommended) WITH_RECOMMENDED=1 ;;
     --local)         shift; [ $# -gt 0 ] || die "--local butuh path"; LOCAL_PATH="$1" ;;
     --local=*)       LOCAL_PATH="${1#--local=}" ;;
     --scope)         shift; [ $# -gt 0 ] || die "--scope butuh nilai"; SCOPE="$1" ;;
@@ -390,6 +393,82 @@ else
   install_plugin extern frontend-design  claude-plugins-official
   install_plugin extern gopls-lsp        claude-plugins-official
   install_plugin extern typescript-lsp   claude-plugins-official
+  refresh_plugins
+fi
+
+# --------------------------------------------------------------------------
+# 4b. Skill pihak ketiga OPSIONAL (rekomendasi tim)
+# --------------------------------------------------------------------------
+#
+# Beda dari §4: sumbernya repo PERORANGAN (di luar Anthropic), jadi tiap satu
+# butuh `marketplace add owner/repo` dulu. Default TIDAK dipasang — ditanya
+# per-skill. `--yes` sendirian TIDAK memicu ini; pakai --with-recommended untuk
+# memasang tanpa bertanya (mesin baru/otomasi).
+
+# Tanya scope satu skill. Default $SCOPE. Non-interaktif → $SCOPE tanpa bertanya.
+ask_scope_for() {   # ask_scope_for <nama> -> cetak user|project|local
+  if [ "$ASSUME_YES" -eq 1 ] || [ "$WITH_RECOMMENDED" -eq 1 ] || [ ! -r /dev/tty ]; then
+    printf '%s' "$SCOPE"; return
+  fi
+  local a=""
+  printf '  Scope untuk %s? [user/project] (default user) ' "$1" >/dev/tty
+  read -r a </dev/tty || a=""
+  case "$a" in project|p|P) printf 'project' ;; *) printf 'user' ;; esac
+}
+
+# install_optional_personal <plugin> <owner/repo> <nama-marketplace> <deskripsi+risiko>
+install_optional_personal() {
+  local name="$1" repo="$2" mk="$3" desc="$4" use_scope
+
+  if [ -n "$(plugin_row "$name")" ]; then
+    skip "$name — sudah ada"; record extern "$name" "OK" "sudah terpasang"; return 0
+  fi
+
+  # Mode laporan (--dry-run / --verify-only): jangan bertanya, jangan pasang,
+  # jangan hitung sebagai kegagalan — ini komponen opsional.
+  if [ "$DRY_RUN" -eq 1 ]; then
+    skip "$name — opsional, belum terpasang"; record extern "$name" "LEWAT" "opsional (mode laporan)"; return 0
+  fi
+
+  # Gerbang opsional: default TIDAK.
+  if [ "$WITH_RECOMMENDED" -eq 1 ]; then
+    :
+  elif [ "$ASSUME_YES" -eq 1 ]; then
+    skip "$name — dilewati (--yes tanpa --with-recommended)"; record extern "$name" "LEWAT" "opsional, tak dipilih"; return 0
+  elif confirm "Pasang $name? ($desc — sumber: $repo)"; then
+    :
+  else
+    skip "$name — dilewati (opsional)"; record extern "$name" "LEWAT" "opsional, tak dipilih"; return 0
+  fi
+
+  use_scope="$(ask_scope_for "$name")"
+
+  if ! marketplace_present "$mk"; then
+    if ! run claude plugin marketplace add "$repo" --scope "$use_scope"; then
+      warn "$name — gagal add marketplace $repo, lewati"; note "${RUN_OUT%%$'\n'*}"
+      record extern "$name" "GAGAL" "marketplace add $repo"; return 1
+    fi
+  fi
+
+  if run claude plugin install "${name}@${mk}" --scope "$use_scope"; then
+    ok "$name — dipasang dari $mk (scope $use_scope)"
+    record extern "$name" "DIPASANG" "dari $mk, scope $use_scope"
+  else
+    bad "$name — gagal dipasang dari $mk"; note "${RUN_OUT%%$'\n'*}"
+    record extern "$name" "GAGAL" "install dari $mk"; FAILURES=$((FAILURES + 1)); return 1
+  fi
+}
+
+stage "4b/6 Skill pihak ketiga OPSIONAL (rekomendasi tim — default TIDAK)"
+
+if [ "$SKIP_EXTERNAL" -eq 1 ]; then
+  skip "dilewati (--skip-external)"
+else
+  note "Semua dari repo perorangan di luar Anthropic. Pasang hanya yang kamu mau; scope ditanya per-skill."
+  install_optional_personal ponytail      DietrichGebert/ponytail              ponytail            "kode minimalis, hemat token"
+  install_optional_personal ui-ux-pro-max nextlevelbuilder/ui-ux-pro-max-skill ui-ux-pro-max-skill "design intelligence frontend"
+  install_optional_personal impeccable    pbakaus/impeccable                   impeccable          "audit & polish UI, ~291MB"
+  install_optional_personal caveman       juliusbrussee/caveman                caveman             "pangkas token; klaim -65% vs nyata ~-8.5%"
   refresh_plugins
 fi
 
