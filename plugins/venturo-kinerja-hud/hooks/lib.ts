@@ -27,6 +27,7 @@ type RawViolation = {
   category?: string
   detail?: string
   points_final?: number
+  heuristic?: boolean
 }
 type RawGate = { id?: string; ok?: boolean; effect?: string; detail?: string }
 type RawStatus = {
@@ -93,7 +94,11 @@ export function parseStatus(stdout: string): HudStatus {
       findings: dim.findings ?? 0,
     }
   })
-  const violations: HudViolation[] = (raw.violations ?? []).map(v => ({
+  // Poin terbesar dulu; dengan poin sama, temuan pasti (ambang) di atas heuristik (magic value).
+  const ordered = [...(raw.violations ?? [])].sort(
+    (a, b) => (b.points_final ?? 0) - (a.points_final ?? 0) || Number(a.heuristic === true) - Number(b.heuristic === true),
+  )
+  const violations: HudViolation[] = ordered.map(v => ({
     key: violationKey(v),
     file: v.file ?? '',
     line: v.line ?? null,
