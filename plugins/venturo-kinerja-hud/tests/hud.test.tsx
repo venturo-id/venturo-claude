@@ -1,7 +1,7 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
-import { parseStatus, parseThresholds, pushWarning, rulesSection, summaryLine } from '../hooks/lib'
+import { detectStacks, isWatchedFile, parseStatus, parseThresholds, pushWarning, rulesSection, summaryLine } from '../hooks/lib'
 
 const REPO = '/repo'
 const KINERJA = '/plugins/venturo-kinerja'
@@ -77,7 +77,7 @@ const BAND = {
   },
 } as const
 
-type World = { status: () => string; diff?: () => string; isGoRepo?: boolean; ghApproved?: boolean }
+type World = { status: () => string; diff?: () => string; rootNames?: string[]; ghApproved?: boolean }
 
 // Dunia di bawah plugin: plugin venturo-kinerja bersebelahan via env, repo Go, status dari `world`.
 function stubWorld(on: On, world: World): { toasts: string[]; runs: string[][]; clock: ReturnType<typeof mock.clock> } {
@@ -92,9 +92,18 @@ function stubWorld(on: On, world: World): { toasts: string[]; runs: string[][]; 
       e.path === `${KINERJA}/scripts/kinerja_status.py` ||
       e.path === `${KINERJA}/rules/quality-score/structural.md` ||
       e.path === `${KINERJA}/rules/quality-score.md` ||
-      (e.path === `${REPO}/go.mod` && world.isGoRepo !== false)
+      e.path === `${REPO}/.git`
     return { value: exists }
   })
+  on('fs.list', () => ({
+    value: (world.rootNames ?? ['go.mod', 'main.go']).map(name => ({
+      name,
+      kind: 'file' as const,
+      size: 0,
+      mtimeMs: 0,
+      isLink: false,
+    })),
+  }))
   on('fs.read', (_, e) => ({ value: e.path.endsWith('structural.md') ? STRUCTURAL_MD : SCORING_MD }))
   on('process.run', (_, e) => {
     runs.push([...e.argv])
@@ -139,6 +148,20 @@ describe('lib', () => {
     expect(rulesSection(parseThresholds(STRUCTURAL_MD), 10)).toContain('(−10 per temuan di dimensinya): function_length ≤ 50')
   })
 
+  test('stack dikenali dari manifest di root', async () => {
+    expect(detectStacks(['package.json', 'src', 'tsconfig.json'])).toEqual(['javascript'])
+    expect(detectStacks(['App.xcodeproj', 'Podfile', 'composer.json'])).toEqual(['php', 'swift'])
+    expect(detectStacks(['requirements-dev.txt', 'build.gradle.kts', 'pubspec.yaml'])).toEqual(['python', 'kotlin', 'dart'])
+    expect(detectStacks(['README.md'])).toEqual([])
+  })
+
+  test('file yang dipantau mencakup semua bahasa yang didukung', async () => {
+    for (const path of ['src/App.tsx', 'app/Http/Controllers/A.php', 'api/main.py', 'Sources/View.swift', 'lib/a.dart', 'x.kt', 'package.json']) {
+      expect(isWatchedFile(path)).toBe(true)
+    }
+    expect(isWatchedFile('assets/logo.png')).toBe(false)
+  })
+
   test('tanpa pelanggaran tidak ada peringatan push', async () => {
     expect(pushWarning(parseStatus(statusJson()), 5)).toBeUndefined()
   })
@@ -162,8 +185,8 @@ describe('mod', () => {
     }
   })
 
-  test('repo non-Go: band diserahkan ke engine', async ($, on) => {
-    stubWorld(on, { status: statusJson, isGoRepo: false })
+  test('repo tanpa stack dikenali: band diserahkan ke engine', async ($, on) => {
+    stubWorld(on, { status: statusJson, rootNames: ['README.md', 'Makefile'] })
     on('ui.render', ($, e) => {
       const { Text } = $.ui.resolve(e)
       return <Text>engine</Text>
@@ -255,5 +278,30 @@ describe('mod', () => {
     expect(world.toasts).toContain(
       'Kinerja: −3 oversized-function UserService.Create internal/user.service.go:40 — fungsi 63 baris > 50',
     )
+  })
+
+  test('repo React (package.json) aktif dan menampilkan stack', async ($, on) => {
+    const withStacks = () => JSON.stringify({ ...JSON.parse(statusJson()), stacks: ['react', 'node'] })
+    stubWorld(on, { status: withStacks, rootNames: ['package.json', 'src'] })
+    await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
+    const result = await $.command.run(KINERJA_COMMAND)
+    expect(result.text).toContain('stack: react, node')
+    const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+    expect(await ui.find({ type: 'Text', text: /Kinerja ≈90/ })).toBeDefined()
+    await ui.unmount()
+  })
+
+  test('kinerja_status melaporkan stacks kosong: band disembunyikan', async ($, on) => {
+    const noStack = () => JSON.stringify({ ...JSON.parse(statusJson()), stacks: [] })
+    stubWorld(on, { status: noStack, rootNames: ['package.json'] })
+    on('ui.render', ($, e) => {
+      const { Text } = $.ui.resolve(e)
+      return <Text>engine</Text>
+    })
+    await $.session.start({ cwd: REPO, surface: 'terminal', isInteractive: true })
+    await $.command.run(KINERJA_COMMAND)
+    const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+    expect((await ui.find({ type: 'Text', text: /engine/ }))?.text).toBe('engine')
+    await ui.unmount()
   })
 })

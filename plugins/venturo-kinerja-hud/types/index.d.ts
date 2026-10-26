@@ -36,6 +36,8 @@ export type HudStatus = {
   changedLines: number
   head: string
   diffHash: string
+  // null bila kinerja_status versi lama belum melaporkan stack.
+  stacks: string[] | null
   error: string | null
 }
 

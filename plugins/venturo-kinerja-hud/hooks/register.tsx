@@ -9,6 +9,7 @@ import {
   isCommitCommand,
   isGitPush,
   isPushCommand,
+  detectStacks,
   isWatchedFile,
   newViolations,
   parsePerFinding,
@@ -58,6 +59,7 @@ const hud = {
   // Sidik diff terakhir yang sudah dihitung statusnya.
   fingerprint: '',
   isPolling: false,
+  stacks: [] as string[],
 }
 
 async function findKinerjaRoot($: EngineInterface): Promise<string | undefined> {
@@ -84,6 +86,14 @@ async function findKinerjaRoot($: EngineInterface): Promise<string | undefined> 
     }
   }
   return undefined
+}
+
+async function rootStacks($: EngineInterface): Promise<string[]> {
+  if (!(await $.fs.exists(`${hud.cwd}/.git`))) {
+    return []
+  }
+  const entries = await $.fs.list(hud.cwd).catch(() => [])
+  return detectStacks(entries.map(entry => entry.name))
 }
 
 async function loadRulesText($: EngineInterface, root: string): Promise<string | undefined> {
@@ -214,7 +224,8 @@ export const register: Register = on => {
       description: 'Prediksi skor Kinerja + pelanggaran diff ini (args: show | hide)',
     })
     hud.kinerjaRoot = await findKinerjaRoot($)
-    hud.isActive = hud.kinerjaRoot !== undefined && (await $.fs.exists(`${hud.cwd}/go.mod`))
+    hud.stacks = await rootStacks($)
+    hud.isActive = hud.kinerjaRoot !== undefined && hud.stacks.length > 0
     if (hud.isActive && hud.kinerjaRoot !== undefined) {
       hud.rulesText = await loadRulesText($, hud.kinerjaRoot)
       refreshInBackground($)
@@ -233,7 +244,7 @@ export const register: Register = on => {
       return { text: 'HUD Kinerja: plugin venturo-kinerja tidak ditemukan. Pasang venturo-kinerja@venturo-tools atau set VENTURO_KINERJA_ROOT.' }
     }
     if (!hud.isActive) {
-      return { text: 'HUD Kinerja: repo ini bukan repo Go (tidak ada go.mod); fase 1 hanya Go.' }
+      return { text: 'HUD Kinerja: stack repo ini tidak dikenali (tidak ada go.mod, package.json, composer.json, pyproject.toml/requirements.txt, Package.swift/*.xcodeproj, build.gradle, atau pubspec.yaml di root).' }
     }
     const fresh = await refresh($)
     return { text: fresh === null ? 'HUD Kinerja: status belum tersedia.' : reportText(fresh, REPORT_LIMIT) }
@@ -304,7 +315,8 @@ export const register: Register = on => {
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const current = await read($, status)
-    if (!hud.isActive || current === null || e.props.hasSurvey || (await read($, isHidden))) {
+    const hasNoStack = current?.stacks !== null && current?.stacks.length === 0
+    if (!hud.isActive || current === null || hasNoStack || e.props.hasSurvey || (await read($, isHidden))) {
       return next(e)
     }
     const { Box, Button, Text } = $.ui.resolve(e)

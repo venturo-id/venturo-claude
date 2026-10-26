@@ -45,6 +45,7 @@ type RawStatus = {
   violations?: RawViolation[]
   gates?: RawGate[]
   rules?: { age_days?: number; stale?: boolean }
+  stacks?: Array<string | { name?: string }>
 }
 
 export const SUPPORTED_SCHEMA = 1
@@ -63,12 +64,17 @@ export function emptyStatus(error: string): HudStatus {
     changedLines: 0,
     head: '',
     diffHash: '',
+    stacks: null,
     error,
   }
 }
 
 export function violationKey(v: RawViolation): string {
   return [v.file ?? '', v.symbol ?? '', v.category ?? ''].join('|')
+}
+
+function stackName(stack: string | { name?: string }): string {
+  return typeof stack === 'string' ? stack : (stack.name ?? '')
 }
 
 /** Ubah output `kinerja_status.py --json` (schema 1) menjadi state HUD. */
@@ -126,6 +132,7 @@ export function parseStatus(stdout: string): HudStatus {
     changedLines: raw.changed?.lines ?? 0,
     head: raw.head ?? '',
     diffHash: raw.diff_hash ?? '',
+    stacks: raw.stacks === undefined ? null : raw.stacks.map(stackName).filter(name => name !== ''),
     error: null,
   }
 }
@@ -213,6 +220,9 @@ export function toastText(added: HudViolation[]): string | undefined {
 /** Laporan multi-baris untuk perintah /kinerja. */
 export function reportText(status: HudStatus, limit: number): string {
   const lines = [summaryLine(status)]
+  if (status.stacks !== null && status.stacks.length > 0) {
+    lines.push(`  stack: ${status.stacks.join(', ')}`)
+  }
   for (const gate of failedGates(status)) {
     lines.push(`  gate ${gateLabel(gate.id)}: ${gate.detail}`)
   }
@@ -256,7 +266,8 @@ export function rulesSection(thresholds: Array<[string, number]>, perFinding: nu
     '# Standar code review Kinerja (venturo-kinerja-hud)',
     'Kode di repo ini dinilai otomatis oleh code review Kinerja. Tulis kode yang lolos di run pertama:',
     `- Ambang struktur pada fungsi/file yang kamu ubah${deduction}: ${limits}.`,
-    '- Fungsi dihitung dari `func` sampai `}` termasuk baris kosong dan komentar; nesting dihitung dari badan fungsi.',
+    '- Berlaku di semua bahasa: fungsi/method dihitung dari deklarasi sampai penutup badannya termasuk baris kosong dan komentar; nesting dihitung dari badan fungsi; satu objek destructuring = 1 parameter.',
+    '- ui_component_length berlaku untuk file komponen UI (.tsx/.jsx/.vue/.svelte); file lain memakai file_length.',
     '- Perubahan endpoint, DTO, route, atau skema membawa dokumen kontrak dan entri CHANGELOG di PR yang sama (doc sync bernilai 0 atau 100).',
     '- Setiap commit: `type(scope): deskripsi [KODE-123]` dengan kode issue Space; tanpa itu PR tidak dinilai.',
     '- Bug ditimbang per severity; error yang tidak ditangani, nil tanpa cek, dan race juga dihitung di dimensi struktur.',
@@ -305,10 +316,37 @@ export function isCommitCommand(command: string): boolean {
   return /(^|[\s;&|(])git\s+commit\b/.test(command)
 }
 
-const WATCHED_FILE = /(\.go$|(^|\/)(CLAUDE|AGENTS|CLAUDE\.local)\.md$|(^|\/)CHANGELOG\.md$|(^|\/)docs\/|(^|\/)go\.(mod|sum)$)/
+// File yang perubahannya bisa menggeser skor: kode semua stack yang didukung,
+// manifest, dokumen, CHANGELOG, dan instruksi agent.
+const SOURCE_FILE = /\.(go|py|ts|tsx|js|jsx|mjs|cjs|vue|svelte|php|swift|kt|kts|dart|java)$/
+const META_FILE =
+  /(^|\/)(CLAUDE|AGENTS|CLAUDE\.local)\.md$|(^|\/)CHANGELOG\.md$|(^|\/)docs\/|(^|\/)(go\.(mod|sum)|package\.json|composer\.json|pyproject\.toml|requirements[^/]*\.txt|Package\.swift|pubspec\.yaml|build\.gradle(\.kts)?)$/
 
 export function isWatchedFile(path: string): boolean {
-  return WATCHED_FILE.test(path)
+  return SOURCE_FILE.test(path) || META_FILE.test(path)
+}
+
+// Manifest di root repo → stack. Daftar ini hanya menentukan apakah HUD aktif;
+// stack rinci (react, next, laravel, ...) dilaporkan kinerja_status.
+const MANIFEST_STACKS: Array<[RegExp, string]> = [
+  [/^go\.mod$/, 'go'],
+  [/^package\.json$/, 'javascript'],
+  [/^composer\.json$/, 'php'],
+  [/^(pyproject\.toml|setup\.py|setup\.cfg|Pipfile|requirements[^/]*\.txt)$/, 'python'],
+  [/^(Package\.swift|Podfile|.+\.xcodeproj|.+\.xcworkspace)$/, 'swift'],
+  [/^(build|settings)\.gradle(\.kts)?$/, 'kotlin'],
+  [/^pubspec\.yaml$/, 'dart'],
+]
+
+/** Stack yang dikenali dari nama entri di root repo, tanpa duplikat. */
+export function detectStacks(rootNames: readonly string[]): string[] {
+  const found: string[] = []
+  for (const [pattern, stack] of MANIFEST_STACKS) {
+    if (rootNames.some(name => pattern.test(name)) && !found.includes(stack)) {
+      found.push(stack)
+    }
+  }
+  return found
 }
 
 export type InstalledPlugins = {
