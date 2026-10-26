@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Claude Code plugin marketplace by Venturo - Professional development tools and automation utilities",
-    "version": "1.0.14",
+    "version": "1.0.15",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -41,6 +41,37 @@
         "mcp",
         "onboarding",
         "subagents"
+      ]
+    },
+    {
+      "name": "venturo-kinerja",
+      "source": "./plugins/venturo-kinerja",
+      "description": "Menyelaraskan vibe coding dengan AI code review kinerja.venturo.id - snapshot mentah 25 context review production + simulator skor (port 1:1 mesin skor kinerja-be), go-thresholds (ambang struktur Go via go/ast), kinerja_status.py (pelanggaran, gate commit/trivial/agent-docs/doc-sync, prediksi skor; kontrak JSON untuk mod HUD), skill venturo-kinerja-rules/precheck/pr, agent read-only kinerja-file-explorer & kinerja-verifier, dan hook ambang Go, guard pesan commit, guard CLAUDE.md, pengingat doc-sync, serta peringatan rules basi. Fase 1: Go.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Venturo",
+        "email": "dev@venturo.id"
+      },
+      "homepage": "https://github.com/venturo-id/venturo-claude/tree/production/plugins/venturo-kinerja",
+      "repository": "https://github.com/venturo-id/venturo-claude",
+      "license": "MIT",
+      "keywords": [
+        "code-review",
+        "kinerja",
+        "quality-score",
+        "kpi",
+        "rules",
+        "simulator",
+        "hooks",
+        "golang"
+      ],
+      "category": "development",
+      "tags": [
+        "code-review",
+        "kinerja",
+        "quality-score",
+        "hooks",
+        "golang"
       ]
     },
     {

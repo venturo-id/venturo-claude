@@ -1,7 +1,7 @@
 {
   "name": "venturo-kinerja",
   "version": "0.1.0",
-  "description": "Menyelaraskan sesi vibe coding dengan AI code review kinerja.venturo.id - snapshot mentah 25 context review production (rules/ + rules.lock.json) dan simulate_score.py, port 1:1 mesin skor kinerja-be (skor bug severity, quality score bug/structural/readability/doc_sync, taksonomi + penolakan temuan, gate trivial PR) beserta test vector dari test Go. Skill, agent, dan hook menyusul.",
+  "description": "Menyelaraskan sesi vibe coding dengan AI code review kinerja.venturo.id. Isinya: snapshot mentah 25 context review production (rules/ + rules.lock.json); simulate_score.py, port 1:1 mesin skor kinerja-be; go-thresholds (ambang struktur Go via go/ast, angka dari rules); kinerja_status.py (pelanggaran, gate, prediksi skor, kontrak JSON untuk mod HUD); skill venturo-kinerja-rules/precheck/pr; agent read-only kinerja-file-explorer dan kinerja-verifier; hook ambang Go, guard pesan commit, guard CLAUDE.md/AGENTS.md, pengingat doc-sync, dan peringatan rules basi. Fase 1: Go.",
   "author": {
     "name": "Venturo",
     "email": "dev@venturo.id"
@@ -13,6 +13,8 @@
     "quality-score",
     "kpi",
     "rules",
-    "simulator"
+    "simulator",
+    "hooks",
+    "golang"
   ]
 }

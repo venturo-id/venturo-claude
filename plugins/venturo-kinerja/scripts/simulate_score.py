@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Simulator skor code review kinerja (Layer 1) — port 1:1 dari kinerja-be.
 
-Sumber yang di-port (kinerja-be branch production @ da582b1e):
+Sumber yang di-port (kinerja-be branch production @ 99e29f5d, kj-399):
   - internal/shared/reviewscore/score.go                      FromSeverities (skor bug)
   - internal/modules/review/quality_score/domain/calculate.go Calculate (quality score)
   - internal/modules/review/quality_score/domain/config.go    DefaultConfig, Validate
@@ -101,7 +101,7 @@ def dimension(key, weight, tier, enabled=True, conditional=False):
 
 
 def default_config():
-    """DefaultConfig(): bobot 30/30/30/10, PerFinding 15 (production memakai 10 via front-matter)."""
+    """DefaultConfig(): bobot 30/30/30/10, PerFinding 10 (sama dengan front-matter production, kj-399)."""
     taxonomy = [
         {"key": key, "dimension": dim, "enabled": True}
         for dim, keys in _DEFAULT_TAXONOMY for key in keys
@@ -113,7 +113,7 @@ def default_config():
             dimension(DIM_READABILITY, 30, 3),
             dimension(DIM_DOC_SYNC, 10, 1, conditional=True),
         ],
-        "deductions": {"per_finding": 15, "normalize_per_lines": 100},
+        "deductions": {"per_finding": 10},
         "taxonomy": taxonomy,
     }
 
@@ -169,7 +169,7 @@ SLUG_DIMENSION = {
     SLUG_DOC_SYNC: DIM_DOC_SYNC, SLUG_BUG: DIM_BUG,
 }
 
-_INT_FIELDS = {"per_finding", "normalize_per_lines", "weight", "tier"}
+_INT_FIELDS = {"per_finding", "weight", "tier"}
 _BOOL_FIELDS = {"enabled", "conditional"}
 _LIST_FIELDS = {"categories"}
 _KNOWN_FIELDS = _INT_FIELDS | _BOOL_FIELDS | _LIST_FIELDS
@@ -317,8 +317,7 @@ def parse_rules_contexts(files):
             per_finding = _typed(meta, slug, "per_finding")
             if per_finding is None:
                 raise RulesError("%s: per_finding wajib diisi" % slug)
-            cfg["deductions"] = {"per_finding": per_finding,
-                                 "normalize_per_lines": _typed(meta, slug, "normalize_per_lines") or 0}
+            cfg["deductions"] = {"per_finding": per_finding}
         else:
             dim, categories = _dimension_from_meta(slug, meta)
             cfg["dimensions"].append(dim)
@@ -562,7 +561,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description="Simulasi skor code review kinerja (L1).")
     parser.add_argument("input", nargs="?", default="-", help="file JSON input, '-' = stdin")
     parser.add_argument("--rules", default=default_rules_dir(), help="folder rules/ hasil sync")
-    parser.add_argument("--default-config", action="store_true", help="paksa DefaultConfig kode (PerFinding 15)")
+    parser.add_argument("--default-config", action="store_true", help="paksa DefaultConfig kode (PerFinding 10)")
     parser.add_argument("--format", choices=["json", "text"], default="json")
     args = parser.parse_args(argv)
     try:

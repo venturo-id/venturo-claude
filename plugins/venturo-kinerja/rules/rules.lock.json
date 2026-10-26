@@ -5,7 +5,7 @@
     "environment": "production",
     "method": "manual-browser-snapshot",
     "note": "Konten mentah (termasuk front-matter) dibaca dari textarea dialog Edit/Submit Context versi aktif tanpa menyimpan apa pun; sha256 dihitung di browser lalu dicocokkan ulang dengan file di sini. Snapshot manual sampai endpoint export KJ-G tersedia.",
-    "kinerja_be_commit": "da582b1e"
+    "kinerja_be_commit": "99e29f5d"
   },
   "synced_at": "2026-10-26T09:58:00Z",
   "count": 25,

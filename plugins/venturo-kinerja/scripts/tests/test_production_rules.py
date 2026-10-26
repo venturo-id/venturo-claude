@@ -118,7 +118,8 @@ class TestProductionRulesConfig(unittest.TestCase):
         finally:
             shutil.rmtree(tmp)
         self.assertEqual(info["source"], "default")
-        self.assertEqual(cfg["deductions"]["per_finding"], 15)
+        self.assertEqual(cfg["deductions"]["per_finding"], 10)
+        self.assertIn("front-matter", info["error"])
 
 
 class TestRulesLock(unittest.TestCase):
@@ -214,7 +215,8 @@ class TestCli(unittest.TestCase):
 
     def test_default_config_flag(self):
         code, out = self.run_cli(scenario([], [finding("oversized-function", 1)]), "--default-config")
-        self.assertEqual(json.loads(out)["dimension_scores"]["structural"]["score"], 85)
+        self.assertEqual(json.loads(out)["config"]["source"], "default")
+        self.assertEqual(json.loads(out)["dimension_scores"]["structural"]["score"], 90)
 
     def test_missing_changed_files_is_error(self):
         payload = scenario([], [])

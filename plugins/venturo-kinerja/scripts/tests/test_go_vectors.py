@@ -1,4 +1,4 @@
-"""Test vector yang diturunkan 1:1 dari test Go kinerja-be (production @ da582b1e).
+"""Test vector yang diturunkan 1:1 dari test Go kinerja-be (production @ 99e29f5d, kj-399).
 
 Tiap test menyebut asal vector-nya: file `_test.go` dan nama fungsi test Go.
 Path relatif terhadap root kinerja-be.
@@ -11,8 +11,15 @@ from _helpers import base_block, set_enabled, simulate_score as s
 CALC = "internal/modules/review/quality_score/domain/calculate_test.go"
 
 
+def test_config():
+    """testConfig() di calculate_test.go: DefaultConfig dengan per_finding dipatok 15."""
+    cfg = s.default_config()
+    cfg["deductions"]["per_finding"] = 15
+    return cfg
+
+
 def calc(block, files=("src/a.go",), bug_score=None, cfg=None):
-    return s.calculate(cfg or s.default_config(), block, list(files), bug_score)
+    return s.calculate(cfg or test_config(), block, list(files), bug_score)
 
 
 class TestFromSeverities(unittest.TestCase):
@@ -63,7 +70,7 @@ class TestIsTrivial(unittest.TestCase):
 
 
 class TestCalculate(unittest.TestCase):
-    """CALC — skor quality dengan DefaultConfig (PerFinding 15)."""
+    """CALC — skor quality dengan testConfig() (PerFinding 15)."""
 
     def test_happy_path(self):
         # CALC TestCalculateHappyPath: structural 85, readability 85, final 85; bug & doc_sync skip.
@@ -97,7 +104,7 @@ class TestCalculate(unittest.TestCase):
 
     def test_all_dimensions_disabled_is_unscored(self):
         # CALC TestReallocationAllDimensionsSkipped + TestAllDimensionsSkippedIsUnscored
-        cfg = s.default_config()
+        cfg = test_config()
         for d in cfg["dimensions"]:
             d["enabled"] = False
         r = calc(base_block(), cfg=cfg)
@@ -112,7 +119,7 @@ class TestCalculate(unittest.TestCase):
 
     def test_reject_category_not_in_configured_taxonomy(self):
         # CALC TestRejectCategoryNotInConfiguredTaxonomy
-        cfg = s.default_config()
+        cfg = test_config()
         cfg["taxonomy"] = [tx for tx in cfg["taxonomy"] if tx["key"] != "oversized-function"]
         block = dict(base_block(), findings=[{"category": "oversized-function", "evidence": "src/a.go:10"}])
         r = calc(block, cfg=cfg)
@@ -135,15 +142,16 @@ class TestCalculate(unittest.TestCase):
 
     def test_zero_per_finding_falls_back_to_default(self):
         # CALC TestZeroDeductionsFallsBackToDefaultNotFreeScore
-        cfg = s.default_config()
-        cfg["deductions"] = {"per_finding": 0, "normalize_per_lines": 0}
+        cfg = test_config()
+        cfg["deductions"] = {"per_finding": 0}
         r = calc(base_block(), cfg=cfg)
         self.assertNotEqual(r["final_score"], 100)
-        self.assertEqual(r["dimension_scores"]["structural"]["score"], 85)
+        # jatuh ke DefaultConfig().PerFinding = 10 (kj-399)
+        self.assertEqual(r["dimension_scores"]["structural"]["score"], 90)
 
     def test_disabled_dimension_dropped(self):
         # CALC TestDisabledDimensionDroppedFromResultAndFindings
-        cfg = s.default_config()
+        cfg = test_config()
         set_enabled(cfg, "readability", False)
         cfg["dimensions"][1]["weight"] += 40
         block = base_block()
@@ -198,7 +206,7 @@ class TestCalculate(unittest.TestCase):
 
     def test_legacy_dimension_skipped_not_zero(self):
         # CALC TestCalculateLegacyDimensionSkippedNotZero
-        cfg = s.default_config()
+        cfg = test_config()
         cfg["dimensions"].append(s.dimension("correctness", 30, 3))
         r = calc({"findings": None}, files=["a.go"], cfg=cfg)
         self.assertTrue(r["dimension_scores"]["correctness"]["skipped"])
@@ -321,15 +329,13 @@ class TestConfigValidate(unittest.TestCase):
         cfg["dimensions"].append(s.dimension("correctness", 0, 3, enabled=False))
         self.assert_invalid(cfg, "tidak dikenal")
 
-    def test_zero_normalize_per_lines_ok(self):
-        # config_test.go TestValidateAllowsZeroNormalizePerLines
-        cfg = s.default_config()
-        cfg["deductions"]["normalize_per_lines"] = 0
-        s.validate_config(cfg)
+    def test_default_deductions(self):
+        # config_test.go TestDefaultConfigStandardOnly: wantDeductions = Deductions{PerFinding: 10}
+        self.assertEqual(s.default_config()["deductions"], {"per_finding": 10})
 
 
 def valid_files():
-    """validFiles() di md_rules_test.go."""
+    """validFiles() di md_rules_test.go (normalize_per_lines = key lama, harus diabaikan)."""
     return {
         "quality-score": "---\nper_finding: 15\nnormalize_per_lines: 100\n---\nIntro aturan.\n",
         "quality-score/structural": "---\nweight: 30\ntier: 2\nenabled: true\ncategories:\n"
@@ -348,7 +354,7 @@ class TestParseRulesContexts(unittest.TestCase):
     def test_builds_config_and_markdown(self):
         # md_rules_test.go TestParseRulesContextsBuildsConfigAndMarkdown
         cfg, md = s.parse_rules_contexts(valid_files())
-        self.assertEqual(cfg["deductions"], {"per_finding": 15, "normalize_per_lines": 100})
+        self.assertEqual(cfg["deductions"], {"per_finding": 15})
         self.assertEqual([d["key"] for d in cfg["dimensions"]], ["structural", "readability", "doc_sync", "bug"])
         self.assertEqual(cfg["dimensions"][0]["weight"], 30)
         self.assertTrue(cfg["dimensions"][2]["conditional"])

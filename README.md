@@ -22,6 +22,7 @@ curl -fsSL https://raw.githubusercontent.com/venturo-id/venturo-claude/productio
 | Plugin | Version | Description |
 |--------|---------|-------------|
 | [venturo-arsenal](plugins/venturo-arsenal) | 1.0.0 | Team standard pack in one install — guard hooks (`rm -rf`, `git push --force`, `.env` reads/writes, with an audit log), Go/TS quality gates, 3 subagents, 7 team MCP servers with zero credentials, and an idempotent `arsenal-setup.sh` that installs the rest of the team's toolchain. |
+| [venturo-kinerja](plugins/venturo-kinerja) | 0.1.0 | Align vibe coding with the Kinerja AI code review — raw snapshot of the 25 production review contexts, a 1:1 port of the Kinerja scoring engine, Go threshold checks (`go/ast`), `kinerja_status.py` (violations, commit/trivial/agent-docs/doc-sync gates, predicted score; JSON contract for the HUD mod), precheck/PR skills, read-only subagents, and hooks. Phase 1: Go. |
 | [venturo-go](plugins/venturo-go) | 1.0.0 | Go backend automation for the Venturo skeleton — features, entities, endpoints, adapters via clean architecture. |
 | [venturo-react](plugins/venturo-react) | 1.0.0 | React frontend automation — generate features from OpenAPI specs (TypeScript, MUI, React Query). |
 | [venturo-planner](plugins/venturo-planner) | 1.0.0 | Database & API planning — ERD, DBML, PostgreSQL migrations, and API contracts following audit standards. |
