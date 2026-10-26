@@ -75,6 +75,34 @@
       ]
     },
     {
+      "name": "venturo-kinerja-hud",
+      "source": "./plugins/venturo-kinerja-hud",
+      "description": "Mod HUD skor Kinerja di sesi Claude Code - band prediksi skor + pelanggaran di atas prompt, toast pelanggaran baru, status line, ringkasan ambang review di system prompt, dan penahan push/PR saat gate commit gagal atau PR sudah di-approve. Butuh plugin venturo-kinerja. Fase 1: Go.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Venturo",
+        "email": "dev@venturo.id"
+      },
+      "homepage": "https://github.com/venturo-id/venturo-claude/tree/production/plugins/venturo-kinerja-hud",
+      "repository": "https://github.com/venturo-id/venturo-claude",
+      "license": "MIT",
+      "keywords": [
+        "kinerja",
+        "code-review",
+        "hud",
+        "mod",
+        "quality-score",
+        "golang"
+      ],
+      "category": "development",
+      "tags": [
+        "kinerja",
+        "hud",
+        "mod",
+        "golang"
+      ]
+    },
+    {
       "name": "venturo-e2e-web",
       "source": "./plugins/venturo-e2e-web",
       "description": "QA Engineer Automation plugin for Playwright E2E testing with auto-scenario generation and validation",

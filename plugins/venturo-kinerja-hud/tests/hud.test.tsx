@@ -1,0 +1,234 @@
+import { describe, expect, mock, test } from 'claude-code/testing'
+import type { On } from 'claude-code'
+
+import { parseStatus, parseThresholds, pushWarning, rulesSection, summaryLine } from '../hooks/lib'
+
+const REPO = '/repo'
+const KINERJA = '/plugins/venturo-kinerja'
+const STRUCTURAL_MD = [
+  '---',
+  'weight: 30',
+  '---',
+  '- function_length: maks 50 — hitung semua baris',
+  '- function_complexity: maks 10 — hitung tiap percabangan',
+  '- parameter_count: maks 5 — parameter posisional',
+].join('\n')
+const SCORING_MD = '---\nper_finding: 10\n---\nbody'
+
+type Violation = { file: string; line: number; symbol: string; category: string; detail: string; points_final: number }
+
+function statusJson(options: { violations?: Violation[]; commitOk?: boolean; final?: number } = {}): string {
+  const violations = options.violations ?? []
+  const commitOk = options.commitOk ?? true
+  return JSON.stringify({
+    schema_version: 1,
+    head: 'abc123',
+    diff_hash: `sha256:${violations.length}`,
+    changed: { files: 2, lines: 40, go_files: 1 },
+    predicted: {
+      final: options.final ?? 90,
+      status: commitOk ? 'scored' : 'blocked',
+      blocked_by: commitOk ? [] : ['commit_format'],
+      source: 'static',
+      dimensions: {
+        bug: { score: null, skipped: true, weight: 30, findings: 0 },
+        structural: { score: 100 - 10 * violations.length, skipped: false, weight: 30, findings: violations.length },
+        readability: { score: 100, skipped: false, weight: 30, findings: 0 },
+        doc_sync: { score: null, skipped: true, weight: 10, findings: 0 },
+      },
+    },
+    violations,
+    gates: [
+      { id: 'commit_format', ok: commitOk, effect: 'unscored', detail: commitOk ? 'ok' : '1 masalah format commit' },
+      { id: 'rules_fresh', ok: true, effect: 'info', detail: 'rules disync 0.0 hari lalu' },
+    ],
+    rules: { age_days: 0, stale: false },
+  })
+}
+
+const LONG_FUNC: Violation = {
+  file: 'internal/user.service.go',
+  line: 40,
+  symbol: 'UserService.Create',
+  category: 'oversized-function',
+  detail: 'fungsi 63 baris > 50',
+  points_final: 3,
+}
+
+const KINERJA_COMMAND = {
+  command: 'kinerja',
+  args: '',
+  origin: { kind: 'composer' },
+  presentation: { isFullscreen: false, columns: 100 },
+} as const
+
+const BAND = {
+  plugin: 'venturo-kinerja-hud',
+  component: 'AbovePrompt',
+  props: {
+    hasSurvey: false,
+    isWorking: false,
+    maxRows: 12,
+    bodyColumns: 100,
+    scroll: { offset: 0, bodyRows: 12 },
+    view: {},
+    title: '',
+    isFocused: false,
+  },
+} as const
+
+type World = { status: () => string; isGoRepo?: boolean; ghApproved?: boolean }
+
+// Dunia di bawah plugin: plugin venturo-kinerja bersebelahan via env, repo Go, status dari `world`.
+function stubWorld(on: On, world: World): { toasts: string[]; runs: string[][] } {
+  const toasts: string[] = []
+  const runs: string[][] = []
+  mock.env(on, { VENTURO_KINERJA_ROOT: KINERJA, HOME: '/home/dev' })
+  mock.clock(on, { now: 100_000 })
+  on('command.register', () => ({ value: { command: 'kinerja' } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('fs.exists', (_, e) => {
+    const exists =
+      e.path === `${KINERJA}/scripts/kinerja_status.py` ||
+      e.path === `${KINERJA}/rules/quality-score/structural.md` ||
+      e.path === `${KINERJA}/rules/quality-score.md` ||
+      (e.path === `${REPO}/go.mod` && world.isGoRepo !== false)
+    return { value: exists }
+  })
+  on('fs.read', (_, e) => ({ value: e.path.endsWith('structural.md') ? STRUCTURAL_MD : SCORING_MD }))
+  on('process.run', (_, e) => {
+    runs.push([...e.argv])
+    if (e.argv[0] === 'gh') {
+      const pr = world.ghApproved === true ? { state: 'OPEN', reviewDecision: 'APPROVED' } : { state: 'OPEN', reviewDecision: '' }
+      return { value: { exitCode: 0, stdout: JSON.stringify(pr), stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+    }
+    return { value: { exitCode: 0, stdout: world.status(), stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+  })
+  on('ui.toast', (_, e) => {
+    toasts.push(e.text)
+    return { value: undefined }
+  })
+  on('ui.status', () => ({ value: undefined }))
+  on('tool.call', () => ({ result: {} }))
+  return { toasts, runs }
+}
+
+describe('lib', () => {
+  test('parseStatus membaca kontrak schema 1', async () => {
+    const status = parseStatus(statusJson({ violations: [LONG_FUNC], final: 87 }))
+    expect(status.final).toBe(87)
+    expect(status.violations[0]?.points).toBe(3)
+    expect(summaryLine(status)).toBe('Kinerja ≈87 · Bug – · Struktur 90 (1) · Baca 100 · Doc –')
+  })
+
+  test('schema lain ditolak dengan pesan, bukan crash', async () => {
+    expect(parseStatus('{"schema_version": 2}').error).toBe('schema_version 2 tidak didukung HUD')
+    expect(parseStatus('bukan json').error).toBe('output kinerja_status bukan JSON')
+  })
+
+  test('ambang dibaca dari rule structural', async () => {
+    expect(parseThresholds(STRUCTURAL_MD)).toEqual([
+      ['function_length', 50],
+      ['function_complexity', 10],
+      ['parameter_count', 5],
+    ])
+    expect(rulesSection(parseThresholds(STRUCTURAL_MD), 10)).toContain('(−10 per temuan di dimensinya): function_length ≤ 50')
+  })
+
+  test('tanpa pelanggaran tidak ada peringatan push', async () => {
+    expect(pushWarning(parseStatus(statusJson()), 5)).toBeUndefined()
+  })
+})
+
+describe('mod', () => {
+  test('band menampilkan prediksi dan detail pelanggaran di setiap surface', async ($, on) => {
+    stubWorld(on, { status: () => statusJson({ violations: [LONG_FUNC], final: 87 }) })
+    await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
+    await $.command.run(KINERJA_COMMAND)
+
+    for (const surface of ['terminal', 'desktop', 'vscode'] as const) {
+      const ui = await $.ui.mount({ ...BAND, surface })
+      expect((await ui.find({ type: 'Text', text: /Kinerja ≈87/ }))?.text).toBe(
+        'Kinerja ≈87 · Bug – · Struktur 90 (1) · Baca 100 · Doc – ',
+      )
+      await ui.press({ key: 'detail' })
+      expect(await ui.find({ type: 'Text', text: /oversized-function UserService.Create/ })).toBeDefined()
+      await ui.press({ key: 'detail' })
+      await ui.unmount()
+    }
+  })
+
+  test('repo non-Go: band diserahkan ke engine', async ($, on) => {
+    stubWorld(on, { status: statusJson, isGoRepo: false })
+    on('ui.render', ($, e) => {
+      const { Text } = $.ui.resolve(e)
+      return <Text>engine</Text>
+    })
+    await $.session.start({ cwd: REPO, surface: 'terminal', isInteractive: true })
+    const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+    expect((await ui.find({ type: 'Text', text: /engine/ }))?.text).toBe('engine')
+    await ui.unmount()
+  })
+
+  test('/kinerja melaporkan gate dan pelanggaran', async ($, on) => {
+    stubWorld(on, { status: () => statusJson({ violations: [LONG_FUNC], commitOk: false }) })
+    await $.session.start({ cwd: REPO, surface: 'terminal', isInteractive: true })
+    const result = await $.command.run(KINERJA_COMMAND)
+    expect(result.text).toContain('⛔ tidak dinilai: format commit')
+    expect(result.text).toContain('gate format commit: 1 masalah format commit')
+    expect(result.text).toContain('−3 oversized-function UserService.Create internal/user.service.go:40')
+  })
+
+  test('section ringkasan ambang ditambahkan ke system prompt', async ($, on) => {
+    stubWorld(on, { status: statusJson })
+    on('prompt.compose', () => ({ sections: [{ id: 'intro', text: 'intro', scope: 'shared' }] }))
+    await $.session.start({ cwd: REPO, surface: 'terminal', isInteractive: true })
+    const composed = await $.prompt.compose({
+      model: 'claude-opus-5-5',
+      promptModel: 'claude-opus-5-5',
+      surfaces: ['terminal'],
+      tools: [],
+      outputStyle: null,
+      traits: [],
+    })
+    const section = composed.sections.find(one => one.id === 'venturo-kinerja-hud:rules')
+    expect(section?.scope).toBe('session')
+    expect(section?.text).toContain('function_length ≤ 50, function_complexity ≤ 10, parameter_count ≤ 5')
+  })
+
+  test('push ditahan bila gate commit gagal', async ($, on) => {
+    stubWorld(on, { status: () => statusJson({ commitOk: false }) })
+    await $.session.start({ cwd: REPO, surface: 'terminal', isInteractive: true })
+    const pushed = await $.tool.call({ tool: 'Bash', command: 'git push origin feat/x' })
+    expect(pushed.deny).toContain('push ditahan')
+  })
+
+  test('pelanggaran: push diperingatkan sekali, lalu diloloskan', async ($, on) => {
+    stubWorld(on, { status: () => statusJson({ violations: [LONG_FUNC] }) })
+    await $.session.start({ cwd: REPO, surface: 'terminal', isInteractive: true })
+    const first = await $.tool.call({ tool: 'Bash', command: 'git push' })
+    expect(first.deny).toContain('tanyakan apakah tetap push')
+    const second = await $.tool.call({ tool: 'Bash', command: 'git push' })
+    expect(second.deny).toBeUndefined()
+  })
+
+  test('PR yang sudah di-approve: push ditahan (PR lock)', async ($, on) => {
+    stubWorld(on, { status: statusJson, ghApproved: true })
+    await $.session.start({ cwd: REPO, surface: 'terminal', isInteractive: true })
+    const pushed = await $.tool.call({ tool: 'Bash', command: 'git push' })
+    expect(pushed.deny).toContain('PR lock')
+  })
+
+  test('pelanggaran baru setelah edit memunculkan toast', async ($, on) => {
+    let current = statusJson()
+    const world = stubWorld(on, { status: () => current })
+    await $.session.start({ cwd: REPO, surface: 'terminal', isInteractive: true })
+    await $.command.run(KINERJA_COMMAND)
+    current = statusJson({ violations: [LONG_FUNC] })
+    await $.tool.call({ tool: 'Write', file_path: `${REPO}/internal/user.service.go`, content: 'package user' })
+    await $.command.run(KINERJA_COMMAND)
+    expect(world.toasts).toContain(
+      'Kinerja: −3 oversized-function UserService.Create internal/user.service.go:40 — fungsi 63 baris > 50',
+    )
+  })
+})
