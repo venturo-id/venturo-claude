@@ -1,0 +1,3 @@
+# Ditulis engine Claude Code saat mod dimuat dari folder ini (--plugin-dir)
+.claude-plugin/types/
+tsconfig.json
