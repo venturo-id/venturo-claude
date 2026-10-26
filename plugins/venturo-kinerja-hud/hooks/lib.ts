@@ -30,6 +30,7 @@ type RawViolation = {
   heuristic?: boolean
 }
 type RawGate = { id?: string; ok?: boolean; effect?: string; detail?: string }
+type RawStack = { id?: string; name?: string; framework?: string | null }
 type RawStatus = {
   schema_version?: number
   head?: string
@@ -45,7 +46,7 @@ type RawStatus = {
   violations?: RawViolation[]
   gates?: RawGate[]
   rules?: { age_days?: number; stale?: boolean }
-  stacks?: Array<string | { name?: string }>
+  stacks?: Array<string | RawStack>
 }
 
 export const SUPPORTED_SCHEMA = 1
@@ -73,8 +74,14 @@ export function violationKey(v: RawViolation): string {
   return [v.file ?? '', v.symbol ?? '', v.category ?? ''].join('|')
 }
 
-function stackName(stack: string | { name?: string }): string {
-  return typeof stack === 'string' ? stack : (stack.name ?? '')
+/** `react`, atau `react (nextjs)` bila framework-nya lebih spesifik dari id stack. */
+function stackName(stack: string | RawStack): string {
+  if (typeof stack === 'string') {
+    return stack
+  }
+  const id = stack.id ?? stack.name ?? ''
+  const framework = stack.framework ?? ''
+  return framework !== '' && framework !== id ? `${id} (${framework})` : id
 }
 
 /** Ubah output `kinerja_status.py --json` (schema 1) menjadi state HUD. */

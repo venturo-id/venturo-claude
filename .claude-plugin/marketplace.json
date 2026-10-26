@@ -84,7 +84,7 @@
     {
       "name": "venturo-kinerja-hud",
       "source": "./plugins/venturo-kinerja-hud",
-      "description": "Mod HUD skor Kinerja di sesi Claude Code - band prediksi skor + pelanggaran di atas prompt, toast pelanggaran baru, status line, ringkasan ambang review di system prompt, dan penahan push/PR saat gate commit gagal atau PR sudah di-approve. Butuh plugin venturo-kinerja. Fase 1: Go.",
+      "description": "Mod HUD skor Kinerja di sesi Claude Code - band prediksi skor + pelanggaran di atas prompt, toast pelanggaran baru, status line, ringkasan ambang review di system prompt, dan penahan push/PR saat gate commit gagal atau PR sudah di-approve. Butuh plugin venturo-kinerja. Aktif di repo Go, JS/TS (React, Next.js, Node), PHP, Python, Swift, Kotlin, dan Dart/Flutter.",
       "version": "0.1.0",
       "author": {
         "name": "Venturo",
@@ -106,7 +106,11 @@
         "kinerja",
         "hud",
         "mod",
-        "golang"
+        "golang",
+        "react",
+        "php",
+        "python",
+        "swift"
       ]
     },
     {

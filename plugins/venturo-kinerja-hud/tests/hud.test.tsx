@@ -281,11 +281,18 @@ describe('mod', () => {
   })
 
   test('repo React (package.json) aktif dan menampilkan stack', async ($, on) => {
-    const withStacks = () => JSON.stringify({ ...JSON.parse(statusJson()), stacks: ['react', 'node'] })
+    const withStacks = () =>
+      JSON.stringify({
+        ...JSON.parse(statusJson()),
+        stacks: [
+          { id: 'react', language: 'typescript', framework: 'nextjs', rules: ['react'] },
+          { id: 'php', language: 'php', framework: null, rules: ['php'] },
+        ],
+      })
     stubWorld(on, { status: withStacks, rootNames: ['package.json', 'src'] })
     await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
     const result = await $.command.run(KINERJA_COMMAND)
-    expect(result.text).toContain('stack: react, node')
+    expect(result.text).toContain('stack: react (nextjs), php')
     const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
     expect(await ui.find({ type: 'Text', text: /Kinerja ≈90/ })).toBeDefined()
     await ui.unmount()
