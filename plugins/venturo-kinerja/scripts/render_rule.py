@@ -5,6 +5,7 @@
     render_rule.py --list                              # slug, versi, tipe, deskripsi
     render_rule.py --thresholds                        # ambang structural (JSON)
     render_rule.py --stack-for PATH                    # slug skill stack yang cocok untuk repo
+                                                       # (kosong untuk Python/Java: tidak ada skill stack)
 
 Placeholder dirender seperti skills.substituteTemplates() di kinerja-be:
 {{SEVERITY_PENALTIES}} dari angka reviewscore, {{SEVERITY_SCOPE}} dan
@@ -18,28 +19,13 @@ import sys
 
 import kinerja_lib as lib
 
-# Penanda stack mengikuti deskripsi context "Skill stack ..." (dynamic).
-STACK_MARKERS = [
-    ("golang", ["go.mod"]),
-    ("php", ["composer.json"]),
-    ("flutter", ["pubspec.yaml"]),
-]
-
 
 def stack_slugs(repo):
-    found = [slug for slug, markers in STACK_MARKERS
-             if any(os.path.isfile(os.path.join(repo, m)) for m in markers)]
-    pkg = os.path.join(repo, "package.json")
-    if os.path.isfile(pkg):
-        with open(pkg, encoding="utf-8", errors="replace") as fh:
-            deps = fh.read()
-        if '"react-native"' in deps:
-            found.append("react-native")
-        elif '"react"' in deps:
-            found.append("react")
-        else:
-            found.append("node")
-    return found
+    """Slug skill stack kinerja untuk stack yang terdeteksi (urut, unik)."""
+    out = []
+    for st in lib.detect_stacks(repo):
+        out += [slug for slug in st["rules"] if slug not in out]
+    return out
 
 
 def main(argv=None):

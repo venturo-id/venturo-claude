@@ -1,6 +1,6 @@
 ---
 name: venturo-kinerja-rules
-description: Use when writing, modifying, or refactoring Go code, API handlers/DTOs/routes, database migrations, or CLAUDE.md/AGENTS.md in a repository whose pull requests are scored by the Kinerja AI code review (kinerja.venturo.id) — loads the review thresholds, scoring rules, commit/doc-sync gates and the matching stack skill so the code passes review on the first run.
+description: Use when writing, modifying, or refactoring code (Go, TypeScript/JavaScript/React/Next.js/Node, PHP/Laravel/CodeIgniter/Slim, Python, Swift, Kotlin, Dart/Flutter, Java), API routes/controllers/DTOs, database migrations, or CLAUDE.md/AGENTS.md in a repository whose pull requests are scored by the Kinerja AI code review (kinerja.venturo.id) — loads the review thresholds, scoring rules, commit/doc-sync gates and the matching stack skill so the code passes review on the first run.
 ---
 
 # venturo-kinerja-rules — tulis kode yang lolos review Kinerja
@@ -17,8 +17,11 @@ resolve relatif dari folder plugin ini (dua tingkat di atas file ini).
 
 1. Muat skill stack yang cocok:
    `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/render_rule.py" $(python3 "${CLAUDE_PLUGIN_ROOT}/scripts/render_rule.py" --stack-for .)`
-   Ikuti aturannya **hanya untuk kode stack itu**. Untuk PHP, ambil juga sub skill
-   framework-nya (`php/laravel`, `php/codeigniter`, `php/slim`).
+   Deteksi dari manifest: `go.mod` → `golang`; `package.json` → `react` (React/Next.js),
+   `react-native`, atau `node`; `composer.json` → `php` + `php/laravel|codeigniter|slim`;
+   Xcode/`Package.swift`/`Podfile` → `ios-swift`; Gradle Kotlin → `kotlin`; `pubspec.yaml` →
+   `flutter`. Ikuti aturannya **hanya untuk kode stack itu**. **Python dan Java tidak punya
+   skill stack di Kinerja**: untuk keduanya hanya ambang umum di bawah + `workflow` yang berlaku.
 2. Baca `CLAUDE.md` repo; konvensi repo menang atas preferensi umum.
 
 ## Ambang struktur (quality-score/structural)
@@ -37,8 +40,12 @@ Tiap pelanggaran pada fungsi/blok yang disentuh diff = 1 temuan structural (−1
 | duplication | 0 | blok identik/nyaris identik berulang |
 | magic_values | 0 | literal tanpa nama di logika inti (test/config/pesan log dikecualikan) |
 
-Hook plugin ini mengukur ambang Go setiap kali file `.go` diedit. Bila hook melapor,
-perbaiki saat itu juga (pecah fungsi, early return, struct parameter, konstanta bernama).
+Hook plugin ini mengukur ambang setiap kali file kode diedit (Go, Python, TS/JS presisi; PHP,
+Swift, Kotlin, Dart, Java heuristik). Bila hook melapor, perbaiki saat itu juga (pecah fungsi,
+early return, objek/struct parameter, konstanta bernama). Komponen fungsi React/Vue juga fungsi:
+lebih dari 50 baris = oversized-function, file komponen > 300 baris = oversized-component;
+pecah jadi sub-komponen dan custom hook. File SwiftUI `View`, widget Flutter, dan `@Composable`
+dianggap komponen UI.
 
 ## Kategori yang dihitung
 
@@ -58,14 +65,20 @@ perbaiki saat itu juga (pecah fungsi, early return, struct parameter, konstanta 
 Skor final = round(Σ skor × bobot ÷ Σ bobot aktif). Satu temuan structural ≈ −3 final;
 dokumen tertinggal = −10 final.
 
-## Doc-sync (base repo Go)
+## Doc-sync
 
-| Kode yang berubah | Dokumen wajib di PR yang sama |
-|---|---|
-| `internal/modules/<domain>/**/handler/**` atau `dto/**` | `docs/api-contract/<domain>/**` (+ naikkan `**Last Updated:**`) |
-| `internal/router/**`, handler/dto lain | `docs/api-contract/**` |
-| `internal/database/migrations/<module>/**` | `docs/erd/<module>.mmd` |
-| kode apa pun (base repo punya CHANGELOG) | entri di `CHANGELOG.md` `## [Unreleased]` |
+| Stack | Kode yang berubah | Dokumen wajib di PR yang sama |
+|---|---|---|
+| Go | `internal/modules/<domain>/**/handler/**` atau `dto/**` | `docs/api-contract/<domain>/**` (+ naikkan `**Last Updated:**`) |
+| Go | `internal/router/**`, handler/dto lain | `docs/api-contract/**` |
+| Go | `internal/database/migrations/<module>/**` | `docs/erd/<module>.mmd` |
+| React/Next.js | route handler `app/**/route.ts`, `pages/api/**`, lapisan API `src/**/api/*`, `src/**/services/*` | `docs/**` (kontrak/pola) atau OpenAPI |
+| Node | `routes/`, `controllers/`, `*.controller.ts`, `*.routes.ts`, `*.dto.ts`, migration/Prisma | `docs/**` atau OpenAPI |
+| PHP | `routes/api.php`, `app/Http/{Controllers,Requests,Resources}`, `database/migrations`, controller CI/Slim | `docs/**` atau OpenAPI |
+| Python | `routers/`, `api/`, `views`, `urls.py`, `serializers.py`, `schemas.py`, migration | `docs/**` atau OpenAPI |
+| semua | kode apa pun, bila repo punya `CHANGELOG.md` | entri di `CHANGELOG.md` `## [Unreleased]` |
+
+Kinerja menilai doc_sync dari isi diff; tabel ini heuristik plugin untuk mengingatkan.
 
 ## CLAUDE.md / AGENTS.md
 

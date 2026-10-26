@@ -1,7 +1,7 @@
 """Bersama untuk hook venturo-kinerja: baca event, cari repo, impor scripts/.
 
 Prinsip semua hook: gagal = diam (exit 0). Hook hanya bersuara bila yakin,
-dan hanya di repo Go (fase 1 plugin ini).
+dan hanya di repo yang stack-nya dikenali (lihat kinerja_lib.detect_stacks).
 """
 
 import json
@@ -26,9 +26,9 @@ def project_dir(event):
     return event.get("cwd") or os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
 
 
-def go_repo_root(path):
-    """Akar modul Go (direktori go.mod terdekat ke atas), atau None."""
-    return lib.find_up(path, "go.mod")
+def supported(path, event=None):
+    """Stack yang dikenali di repo yang memuat path; [] = hook diam."""
+    return lib.supported_repo(path, project_dir(event) if event is not None else None)
 
 
 def git_root(path):

@@ -1,14 +1,14 @@
 """SessionStart — peringatkan bila snapshot rules kinerja lebih tua dari 14 hari.
 
 Rules basi = plugin bisa menilai dengan aturan yang sudah diganti reviewer
-kinerja. Diam bila repo bukan repo Go atau rules masih segar.
+kinerja. Diam bila stack repo tidak dikenali atau rules masih segar.
 """
 
-from _common import emit, go_repo_root, guarded, lib, project_dir
+from _common import emit, guarded, lib, project_dir, supported
 
 
 def main(event):
-    if go_repo_root(project_dir(event)) is None:
+    if not supported(project_dir(event), event):
         return
     info = lib.rules_info()
     if not info["stale"]:

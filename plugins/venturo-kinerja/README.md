@@ -5,17 +5,18 @@ code review di [kinerja.venturo.id](https://kinerja.venturo.id). Tujuannya kuali
 nyata yang lolos review di run pertama, bukan mengakali reviewer: plugin tidak pernah menulis
 apa pun yang ditujukan ke reviewer.
 
-> **0.1.0 — fase 1: Go.** Hook dan cek statis hanya aktif di repo yang punya `go.mod`;
-> TS/React menyusul. **Rules = snapshot manual** sampai endpoint export context (tiket
-> **KJ-G**) tersedia; setelah itu sync dijalankan GitHub Action terjadwal.
+> **0.1.0.** Aktif di repo yang stack-nya dikenali dari manifest: Go, React/Next.js/Node
+> (TS/JS), PHP (Laravel/CodeIgniter/Slim), Python, Swift (iOS), Kotlin, Dart/Flutter, Java.
+> **Rules = snapshot manual** sampai endpoint export context (tiket **KJ-G**) tersedia;
+> setelah itu sync dijalankan GitHub Action terjadwal.
 
 ```
 /plugin marketplace add venturo-id/venturo-claude
 /plugin install venturo-kinerja@venturo-tools
 ```
 
-Prasyarat: `python3` dan `git`. `go` dipakai untuk cek ambang struktur; tanpa `go`, cek itu
-dilewati (tidak memblokir).
+Prasyarat: `python3` dan `git`. Runtime tambahan hanya untuk analyzer presisi (lihat
+"Dukungan bahasa"); tanpa runtime itu cek dilewati atau turun ke heuristik, tidak memblokir.
 
 ---
 
@@ -25,7 +26,8 @@ dilewati (tidak memblokir).
 |---|---|
 | `rules/` | Konten **mentah** (termasuk front-matter) 25 context review production; path mengikuti slug. `rules.lock.json`: versi, sha256, deskripsi, `active_updated_at` per slug. **Jangan diedit manual.** |
 | `scripts/simulate_score.py` | Port 1:1 mesin skor kinerja-be (`production` @ `99e29f5d`, kj-399). |
-| `scripts/go-thresholds/` | Program Go kecil (`go/ast`, stdlib): ambang struktur per fungsi/file. Angka ambang dibaca dari `rules/quality-score/structural.md`. |
+| `scripts/thresholds.py` | Dispatcher ambang struktur per bahasa; satu skema output untuk semua bahasa. Angka ambang dibaca dari `rules/quality-score/structural.md`. |
+| `scripts/go-thresholds/`, `analyze_python.py`, `ts-thresholds.cjs`, `analyze_clike.py` | Analyzer Go (`go/ast`), Python (`ast`), TS/JS (TypeScript compiler API project), dan heuristik bergaya C. |
 | `scripts/kinerja_status.py` | Status diff lokal: pelanggaran, gate, prediksi skor. `--json` = kontrak untuk mod HUD. |
 | `scripts/render_rule.py` | Tampilkan rule dengan placeholder dirender (`{{SEVERITY_PENALTIES}}` dari angka mesin skor). |
 | `skills/venturo-kinerja-rules` | Auto-trigger saat menulis kode: ambang, kategori skor, doc-sync, gate, skill stack. |
@@ -48,15 +50,16 @@ git config kinerja.base origin/production-simple
 
 ## Hook
 
-Semua hook: diam bila repo bukan repo Go, dilewati (exit 0) bila `python3`/`go`/`git` tidak
-ada atau terjadi error tak terduga.
+Semua hook: diam bila stack repo tidak dikenali (`kinerja_status.py --stacks` = `[]`),
+dilewati (exit 0) bila `python3`/`git` atau runtime analyzer tidak ada, atau terjadi error tak
+terduga.
 
 | Event | Perilaku |
 |---|---|
-| `PostToolUse` Edit/Write/MultiEdit `.go` | go-thresholds untuk file itu saja. Hanya pelanggaran **baru** (dibanding isi sebelum edit, atau HEAD untuk Write) pada fungsi yang disentuh → exit 2 + pesan ringkas ke Claude. Magic value (heuristik) tidak dilaporkan di hook. |
+| `PostToolUse` Edit/Write/MultiEdit file kode | Dispatcher ambang untuk file itu saja. Hanya pelanggaran **baru** (dibanding isi sebelum edit, atau HEAD untuk Write) pada fungsi yang disentuh → exit 2 + pesan ringkas ke Claude; temuan analyzer heuristik diberi label "(heuristik)". Magic value tidak dilaporkan di hook. Go tanpa `go`, atau TS/JS tanpa `node` + `node_modules/typescript` project → dilewati (tidak menebak). |
 | `PostToolUse` edit `CLAUDE.md`/`AGENTS.md` | > 200 baris (termasuk `@import`) dan, untuk file root, bagian delegasi lima poin → exit 2 (temuan agent-docs selalu critical). |
 | `PreToolUse` Bash `git commit` | Pesan dari `-m`/`--message`/heredoc dicek regex kinerja + kode `[KODE-n]`; gagal → ditolak. `-F`, `-C`, editor, `--amend` tanpa `-m`, atau pesan berisi `$(...)`/`$VAR` dilewati. |
-| `Stop` | API/route/dto/migration berubah tanpa `docs/api-contract`/`docs/erd` (atau tanpa entri `CHANGELOG.md` bila repo punya) → `decision: block` dengan alasan, **sekali per keadaan diff**. |
+| `Stop` | Berkas permukaan API/kontrak/migration berubah tanpa dokumen (aturan per stack, lihat skill `venturo-kinerja-rules`), atau tanpa entri `CHANGELOG.md` bila repo punya → `decision: block` dengan alasan, **sekali per keadaan diff**. |
 | `SessionStart` | Snapshot rules > 14 hari → peringatan. |
 
 State lokal ditulis di `.claude/venturo-kinerja/` repo (berisi `.gitignore` `*`, jadi tidak
@@ -65,8 +68,12 @@ ikut commit): `last-precheck.json` dan `doc-sync-reminded`.
 ## Kontrak `kinerja_status.py --json` (schema_version 1)
 
 Dibaca mod HUD (F2b). Field yang ada tidak diubah artinya tanpa menaikkan `schema_version`;
-field baru boleh ditambah. Tanpa LLM dan jaringan; < 2 detik pada diff biasa (build pertama
-go-thresholds ~1 detik, lalu di-cache di `$CLAUDE_PLUGIN_DATA/bin` atau `~/.cache/venturo-kinerja/bin`).
+field baru boleh ditambah. Tanpa LLM dan jaringan; < 2 detik pada diff biasa (diukur 0,16–0,27 dtk
+di skeleton react/next.js; build pertama go-thresholds ~1 detik, lalu di-cache di
+`$CLAUDE_PLUGIN_DATA/bin` atau `~/.cache/venturo-kinerja/bin`).
+
+Untuk cek aktif/tidaknya plugin di sebuah repo tanpa menghitung diff:
+`kinerja_status.py --stacks [--repo PATH]` → JSON list stack (`[]` = tidak aktif).
 
 ```jsonc
 {
@@ -76,7 +83,11 @@ go-thresholds ~1 detik, lalu di-cache di `$CLAUDE_PLUGIN_DATA/bin` atau `~/.cach
   "base": {"ref": "origin/production-simple", "merge_base": "<sha>"},
   "head": "<sha>",
   "diff_hash": "sha256:<hex>",          // diff merge-base..working tree + file untracked
-  "changed": {"files": 21, "lines": 1239, "go_files": 1},
+  "changed": {"files": 21, "lines": 1239, "go_files": 1,
+              "by_language": {"go": 1}},          // + sejak multi-bahasa
+  "stacks": [{"id": "react", "language": "typescript", "framework": "nextjs",
+              "rules": ["react"], "manifest": "package.json", "path": "."}],
+  "analyzers": {"typescript": "precise"},     // precise | heuristic | unavailable
   "predicted": {
     "final": 73,                        // null bila status unscored/trivial
     "status": "scored",                 // scored | blocked | trivial | unscored
@@ -94,7 +105,7 @@ go-thresholds ~1 detik, lalu di-cache di `$CLAUDE_PLUGIN_DATA/bin` atau `~/.cach
   "violations": [                       // urut points_final menurun
     {"file": "internal/.../user.handler.go", "line": 270, "symbol": "UserHandler.Export",
      "category": "deep-nesting", "dimension": "structural", "detail": "nesting 6 level > 4",
-     "key": "nesting_depth", "value": 6, "max": 4, "heuristic": false,
+     "key": "nesting_depth", "value": 6, "max": 4, "heuristic": false, "language": "go",
      "source": "go-thresholds", "points_final": 4}
   ],
   "gates": [{"id": "commit_format", "ok": false, "effect": "unscored", "detail": "...", "items": ["..."]}],
@@ -106,9 +117,15 @@ go-thresholds ~1 detik, lalu di-cache di `$CLAUDE_PLUGIN_DATA/bin` atau `~/.cach
 }
 ```
 
-- `violations[].source`: `go-thresholds` (deterministik; `heuristic: true` hanya untuk
-  magic value), `agent-docs` (dimensi bug, severity critical, `line: null`), `doc-sync`
-  (heuristik path, `line: null`).
+- `violations[].source`: `go-thresholds` (Go) atau `thresholds` (bahasa lain) — `heuristic`
+  true untuk magic value dan semua temuan analyzer heuristik; `agent-docs` (dimensi bug,
+  severity critical, `line: null`); `doc-sync` (heuristik path, `line: null`).
+- `violations[].language`: bahasa file (pelanggaran ambang saja; agent-docs/doc-sync tanpa field ini).
+- `stacks[]`: `id` = `go` | `react` | `react-native` | `node` | `php` | `python` | `ios-swift` |
+  `kotlin` | `java` | `flutter`; `rules` = slug skill stack kinerja (Python/Java: `[]`);
+  `path` relatif ke repo (monorepo: subfolder langsung dan `apps/*`, `packages/*`, ...).
+- `analyzers`: bahasa di diff + bahasa stack → `precise` | `heuristic` | `unavailable`
+  (`unavailable` hanya Go tanpa `go`; disertai `warnings`).
 - `points_final` = selisih skor final bila pelanggaran itu diperbaiki (simulator dijalankan
   ulang tanpa temuan itu). Untuk agent-docs tanpa precheck, dimensi bug diasumsikan hanya
   berisi temuan statis.
@@ -120,19 +137,64 @@ go-thresholds ~1 detik, lalu di-cache di `$CLAUDE_PLUGIN_DATA/bin` atau `~/.cach
   `kinerja_status.py --record-precheck FILE` (format FILE: lihat skill precheck).
 - Exit code: 0 sukses, 2 error (base tidak ditemukan, bukan repo git) dengan pesan di stderr.
 
-## go-thresholds
+## Dukungan bahasa
 
 ```bash
-go -C plugins/venturo-kinerja/scripts/go-thresholds run . \
-  -rules "$PWD/plugins/venturo-kinerja/rules/quality-score/structural.md" /abs/a.go:10-20,40-41
+python3 plugins/venturo-kinerja/scripts/thresholds.py src/a.tsx:10-40 app/svc.py -all
 ```
 
-Definisi metrik mengikuti teks `quality-score/structural` v2: panjang fungsi dari `func`
-sampai `}` termasuk baris kosong & komentar; kompleksitas = jumlah if/else if, case non-default,
-for/range, `&&` dan `||` (tanpa basis +1); nesting dari badan fungsi = 0, `else if` tidak
-menambah level, func literal menambah; parameter posisional tanpa receiver; panjang file;
-magic value = literal angka selain 0/1/2 di badan fungsi, kecuali konstanta, argumen
-log/error, dan file `_test.go`. `duplication` dan `ui_component_length` tidak diukur.
+| Bahasa | Ekstensi | Analyzer | Runtime | Bila runtime tidak ada |
+|---|---|---|---|---|
+| Go | `.go` | go-thresholds (`go/ast`) — **presisi** | `go` | status: `unavailable` + warning; hook dilewati |
+| Python | `.py` | `ast` — **presisi** | (python3) | — |
+| TypeScript / JavaScript | `.ts .tsx .mts .cts .js .jsx .mjs .cjs` | TypeScript compiler API dari `node_modules/typescript` project — **presisi** | `node` + typescript project | status: heuristik; hook dilewati |
+| PHP | `.php` | heuristik | — | — |
+| Swift | `.swift` | heuristik | — | — |
+| Kotlin | `.kt .kts` | heuristik | — | — |
+| Dart | `.dart` | heuristik | — | — |
+| Java | `.java` | heuristik | — | — |
+| Vue / Svelte | `.vue .svelte` | heuristik (panjang komponen) | — | — |
+
+Definisi metrik mengikuti teks `quality-score/structural` v2 untuk semua bahasa:
+
+- **Panjang fungsi**: dari baris deklarasi (`func`/`def`/`function`/`fun`/nama method; modifier
+  seperti `export`/`public` ikut, decorator/annotation **tidak**) sampai penutup badan,
+  termasuk baris kosong & komentar.
+- **Kompleksitas**: if/else if, case non-default (Kotlin: cabang `when`), loop, ternary,
+  `&&`/`||` (Python: `and`/`or`, comprehension); tanpa basis +1.
+- **Nesting**: badan fungsi = 0; if/loop/switch/try/with (Python) menambah satu; `else if`/`elif`
+  tidak; callback/closure anonim menambah satu dan dihitung bersama fungsi induknya.
+- **Parameter**: semua parameter; tanpa receiver Go, `self`/`cls` Python, `this` TS. Satu
+  objek destructuring = 1. Parameter bernama Dart `{a, b}` dihitung per item.
+- **Fungsi yang diukur**: deklarasi bernama — function, method, constructor, arrow/function
+  expression yang di-assign ke variabel/properti. Callback anonim ikut fungsi induknya.
+  **Komponen fungsi React juga fungsi**: > 50 baris = `oversized-function` (sesuai definisi
+  context; ini sumber temuan terbesar di kode FE).
+- **Komponen UI** (`ui_component_length` 300, kategori `oversized-component`, menggantikan
+  `file_length` 800): `.tsx`, `.jsx`, `.vue`, `.svelte`, file Swift yang mendeklarasikan
+  `struct X: View`, Dart yang `extends StatelessWidget/StatefulWidget/State<`, dan Kotlin yang
+  memuat `@Composable`.
+- **Magic value** (selalu `heuristic`): literal angka selain 0/1/2 di badan fungsi, kecuali
+  konstanta bernama KAPITAL, nilai properti objek/dict/argumen bernama, atribut & ekspresi
+  JSX, `case`, argumen log/error, dan file test.
+- **Dilewati**: `node_modules`, `vendor`, `dist`, `build`, `.next`, `out`, `coverage`, `Pods`,
+  `DerivedData`, `.dart_tool`, `.gradle`, venv, `*.min.js`, `*.d.ts`, `*.pb.go`, lockfile, dan
+  file yang di header-nya ada `Code generated`/`@generated`/`DO NOT EDIT`.
+- `duplication` belum diukur.
+
+**Analyzer heuristik** (`analyze_clike.py`): komentar dan isi string (termasuk interpolasi
+`${}`/`\()`, template literal, triple-quote, heredoc PHP) dibuang dulu, lalu deklarasi dicari
+per bahasa dan badan dicocokkan dengan brace matching. Batasnya: regex literal JS, fungsi
+berbadan ekspresi (`fun f() = ...`, `=> expr;`), nama method TS/JS tanpa prefiks kelas, dan
+pola deklarasi yang tidak lazim bisa terlewat; kedalaman nesting dihitung dari brace blok
+(objek/array literal dikecualikan lewat token sebelum `{`).
+
+**Deteksi stack** (manifest di root repo, subfolder langsung, dan `apps/*`, `packages/*`,
+`services/*`, ...): `go.mod` → go; `package.json` → `react-native` / `react` (React & Next.js)
+/ `node` (+ framework express/nest/fastify/...); `composer.json` → php (+ laravel/codeigniter/
+slim); `pyproject.toml`/`requirements*.txt`/`setup.py`/`Pipfile` → python (+ fastapi/django/
+flask); `*.xcodeproj`/`*.xcworkspace`/`Package.swift`/`Podfile` → ios-swift; Gradle →
+kotlin (atau java); `pubspec.yaml` → flutter.
 
 ## Simulator skor
 
@@ -155,8 +217,13 @@ python3 -m unittest discover -s plugins/venturo-kinerja/scripts/tests -v
 (cd plugins/venturo-kinerja/scripts/go-thresholds && go test ./...)
 ```
 
+Jalur presisi TS/JS diuji bila `VENTURO_KINERJA_TEST_TS` menunjuk folder
+`node_modules/typescript` mana pun (mis. `npm i typescript@5` di folder sementara); tanpa itu
+test presisinya dilewati dan fallback heuristik tetap diuji.
+
 Vector simulator diturunkan dari test Go kinerja-be (asal tiap vector di komentar) dan tabel
-simulasi plan. Test status/hook memakai repo git sementara (`tests/fixture_repo.py`).
+simulasi plan. Test status/hook memakai repo git sementara (`tests/fixture_repo.py`); fixture
+per bahasa ada di `tests/lang_fixtures.py`.
 
 ## Sync ulang rules (manual, sampai KJ-G)
 

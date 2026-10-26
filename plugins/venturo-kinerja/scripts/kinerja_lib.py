@@ -11,7 +11,6 @@ import os
 import re
 import shutil
 import subprocess
-import tempfile
 
 import simulate_score as sim
 
@@ -188,47 +187,234 @@ def _delegation_section(text):
     return rest[: nxt.start()] if nxt else rest
 
 
-# --- doc-sync heuristik (selaras scripts/check-doc-sync.sh skeleton-go) ----
+# --- file yang tidak dinilai sebagai kode -----------------------------------
+
+LOCKFILES = {"package-lock.json", "yarn.lock", "pnpm-lock.yaml", "composer.lock", "go.sum", "Cargo.lock",
+             "pubspec.lock", "Podfile.lock", "Package.resolved", "poetry.lock", "Pipfile.lock", "uv.lock",
+             "gradle.lockfile", "bun.lockb"}
+TEST_PATH_RE = re.compile(
+    r"(_test\.(go|dart|py)$|(^|/)test_[^/]*\.py$|\.(test|spec)\.[cm]?[jt]sx?$|(^|/)(__tests__|tests?|spec)/"
+    r"|Tests?\.(swift|kt|java)$|Test\.php$)")
+
+
+def is_test_path(path):
+    return bool(TEST_PATH_RE.search(path.replace(os.sep, "/")))
+
+
+# --- deteksi stack (manifest) ----------------------------------------------
+
+_SKIP_DIRS = {"node_modules", "vendor", "dist", "build", ".next", "out", "coverage", "Pods", "DerivedData",
+              ".git", ".dart_tool", ".gradle", "__pycache__", ".venv", "venv", "docs"}
+_MONOREPO_PARENTS = {"apps", "packages", "services", "libs", "backend", "frontend", "mobile", "web", "api"}
+_NODE_BACKENDS = ("express", "@nestjs/core", "fastify", "koa", "@hapi/hapi", "hono")
+_PHP_FRAMEWORKS = [("laravel/framework", "laravel"), ("codeigniter4/framework", "codeigniter"),
+                   ("codeigniter/framework", "codeigniter"), ("slim/slim", "slim")]
+_PY_MANIFESTS = ("pyproject.toml", "setup.py", "setup.cfg", "Pipfile")
+
+
+def _read_text(path, limit=200000):
+    try:
+        with open(path, encoding="utf-8", errors="replace") as fh:
+            return fh.read(limit)
+    except OSError:
+        return ""
+
+
+def _js_stack(d):
+    try:
+        pkg = json.loads(_read_text(os.path.join(d, "package.json")))
+    except ValueError:
+        return None
+    deps = {}
+    for key in ("dependencies", "devDependencies", "peerDependencies"):
+        deps.update(pkg.get(key) or {})
+    lang = "typescript" if "typescript" in deps or os.path.isfile(os.path.join(d, "tsconfig.json")) else "javascript"
+    if "react-native" in deps:
+        return {"id": "react-native", "language": lang, "framework": "react-native", "rules": ["react-native"]}
+    if "next" in deps:
+        return {"id": "react", "language": lang, "framework": "nextjs", "rules": ["react"]}
+    if "react" in deps:
+        return {"id": "react", "language": lang, "framework": "react", "rules": ["react"]}
+    fw = next((d_ for d_ in _NODE_BACKENDS if d_ in deps), None)
+    return {"id": "node", "language": lang, "framework": fw, "rules": ["node"]}
+
+
+def _php_stack(d):
+    text = _read_text(os.path.join(d, "composer.json"))
+    fw = next((name for pkg, name in _PHP_FRAMEWORKS if '"%s"' % pkg in text), None)
+    return {"id": "php", "language": "php", "framework": fw, "rules": ["php"] + (["php/" + fw] if fw else [])}
+
+
+def _python_stack(d):
+    names = [n for n in _PY_MANIFESTS if os.path.isfile(os.path.join(d, n))]
+    names += sorted(n for n in os.listdir(d) if re.match(r"requirements.*\.txt$", n))
+    if not names:
+        return None
+    text = " ".join(_read_text(os.path.join(d, n)) for n in names).lower()
+    fw = next((f for f in ("fastapi", "django", "flask") if f in text), None)
+    return {"id": "python", "language": "python", "framework": fw, "rules": [], "manifest": names[0]}
+
+
+def _gradle_stack(d):
+    names = [n for n in ("build.gradle.kts", "build.gradle", "settings.gradle.kts", "settings.gradle")
+             if os.path.isfile(os.path.join(d, n))]
+    if not names:
+        return None
+    text = " ".join(_read_text(os.path.join(d, n)) for n in names)
+    if "kotlin" in text or names[0].endswith(".kts"):
+        return {"id": "kotlin", "language": "kotlin", "framework": "android" if "android" in text else None,
+                "rules": ["kotlin"], "manifest": names[0]}
+    return {"id": "java", "language": "java", "framework": None, "rules": [], "manifest": names[0]}
+
+
+def _stacks_in(d):
+    out = []
+    has = lambda name: os.path.isfile(os.path.join(d, name))  # noqa: E731
+    if has("go.mod"):
+        out.append({"id": "go", "language": "go", "framework": None, "rules": ["golang"], "manifest": "go.mod"})
+    if has("package.json"):
+        st = _js_stack(d)
+        if st:
+            out.append(dict(st, manifest="package.json"))
+    if has("composer.json"):
+        out.append(dict(_php_stack(d), manifest="composer.json"))
+    for st in (_python_stack(d), _gradle_stack(d)):
+        if st:
+            out.append(st)
+    entries = os.listdir(d)
+    apple = [n for n in entries if n.endswith((".xcodeproj", ".xcworkspace"))] + \
+        [n for n in ("Package.swift", "Podfile") if n in entries]
+    if apple:
+        out.append({"id": "ios-swift", "language": "swift", "framework": None, "rules": ["ios-swift"],
+                    "manifest": apple[0]})
+    if has("pubspec.yaml"):
+        out.append({"id": "flutter", "language": "dart", "framework": "flutter", "rules": ["flutter"],
+                    "manifest": "pubspec.yaml"})
+    return out
+
+
+def _candidate_dirs(root):
+    yield root
+    try:
+        children = sorted(e for e in os.listdir(root) if not e.startswith(".") and e not in _SKIP_DIRS)
+    except OSError:
+        return
+    for name in children:
+        sub = os.path.join(root, name)
+        if not os.path.isdir(sub):
+            continue
+        yield sub
+        if name in _MONOREPO_PARENTS:
+            for inner in sorted(os.listdir(sub)):
+                if not inner.startswith(".") and os.path.isdir(os.path.join(sub, inner)):
+                    yield os.path.join(sub, inner)
+
+
+def detect_stacks(root):
+    """Stack dari manifest di root, subfolder langsung, dan apps/*, packages/* (monorepo sederhana).
+
+    Kembali list {id, language, framework, rules, manifest, path} — [] bila tidak dikenali.
+    """
+    out, seen = [], set()
+    for d in _candidate_dirs(root):
+        rel = os.path.relpath(d, root).replace(os.sep, "/")
+        for st in _stacks_in(d):
+            key = (st["id"], rel)
+            if key not in seen:
+                seen.add(key)
+                out.append(dict(st, path=rel))
+    return out
+
+
+def repo_root(path, fallback=None):
+    """Akar repo git; bukan repo git → fallback (mis. cwd sesi) atau direktori path."""
+    start = path if os.path.isdir(path) else os.path.dirname(path)
+    return find_up(start, ".git") or (os.path.abspath(fallback) if fallback else os.path.abspath(start))
+
+
+def supported_repo(path, fallback=None):
+    """Stack yang dikenali untuk repo yang memuat path; [] = hook harus diam.
+
+    Selain detect_stacks(akar repo), manifest dicari naik dari folder path sampai
+    akar repo — supaya proyek bersarang lebih dalam dari monorepo sederhana tetap dikenali.
+    """
+    root = repo_root(path, fallback)
+    stacks = detect_stacks(root)
+    cur = os.path.abspath(path if os.path.isdir(path) else os.path.dirname(path))
+    while not stacks and cur.startswith(root):
+        stacks = [dict(st, path=os.path.relpath(cur, root)) for st in _stacks_in(cur)]
+        if cur == root:
+            break
+        cur = os.path.dirname(cur)
+    return stacks
+
+
+# --- doc-sync heuristik ------------------------------------------------------
+# Go: selaras scripts/check-doc-sync.sh skeleton-go. Stack lain: berkas permukaan
+# API/kontrak/skema berubah → dokumen di `docs/` (atau kontrak OpenAPI) harus ikut.
 
 _MIGRATION_RE = re.compile(r"^internal/database/migrations/([^/]+)/")
 _MODULE_API_RE = re.compile(r"^internal/modules/([^/]+)/.*/(handler|dto)/")
 _OTHER_API_RE = re.compile(r"(^internal/router/|(^|/)(handler|dto)/|\.proto$|(^|/)openapi\.ya?ml$)")
+_DOC_RULES = {  # stack id → pola berkas permukaan API (doc wajib: docs/)
+    "react": [r"(^|/)app/(.+/)?route\.[cm]?[jt]sx?$", r"(^|/)pages/api/",
+              r"(^|/)src/(.+/)?api/[^/]+\.[cm]?[jt]sx?$", r"(^|/)src/(.+/)?services?/[^/]+\.[cm]?[jt]sx?$"],
+    "node": [r"(^|/)(routes?|controllers?|api)/.+\.[cm]?[jt]s$", r"\.(controller|routes?|router|dto)\.[cm]?[jt]s$",
+             r"(^|/)(migrations|prisma)/"],
+    "php": [r"(^|/)routes/(api|web)\.php$", r"(^|/)app/Http/(Controllers|Requests|Resources)/",
+            r"(^|/)database/migrations/", r"(^|/)app/Controllers/", r"(^|/)application/controllers/",
+            r"(^|/)app/Config/Routes\.php$", r"(^|/)(app/)?routes\.php$", r"(^|/)src/(Action|Controller)s?/"],
+    "python": [r"(^|/)(routers?|api|endpoints|views)(/|\.py$)", r"(^|/)(urls|serializers|schemas)\.py$",
+               r"(^|/)(alembic/versions|migrations)/.+\.py$"],
+}
+_DOC_LIKE = re.compile(r"(^|/)docs/|(^|/)(openapi|swagger)[^/]*\.(ya?ml|json)$|(^|/)api-contract/")
 
 
-def doc_sync_check(paths):
+def doc_sync_check(paths, stacks=None):
     """Kode API/route/dto/migration berubah tanpa dokumen pasangannya.
 
-    Kembali: {applicable, updated, api_files, missing, changelog_updated}.
+    stacks: daftar id stack (None = semua aturan). Kembali:
+    {applicable, updated, api_files, missing, changelog_updated}.
     """
     changed = set(paths)
     missing, api_files = [], []
     for path in sorted(changed):
-        if path.endswith("_test.go"):
+        if is_test_path(path) or path.endswith(".md"):
             continue
-        need = _required_doc(path)
+        need = _required_doc(path, stacks)
         if need is None:
             continue
         api_files.append(path)
-        if not any(p == need or p.startswith(need) for p in changed):
+        if not _doc_present(need, changed):
             missing.append("%s -> %s" % (path, need))
     return {
         "applicable": bool(api_files),
         "updated": bool(api_files) and not missing,
         "api_files": api_files,
         "missing": missing,
-        "changelog_updated": "CHANGELOG.md" in changed,
+        "changelog_updated": any(os.path.basename(p) == "CHANGELOG.md" for p in changed),
     }
 
 
-def _required_doc(path):
-    m = _MIGRATION_RE.match(path)
-    if m:
-        return "docs/erd/%s.mmd" % m.group(1)
-    m = _MODULE_API_RE.match(path)
-    if m:
-        return "docs/api-contract/%s/" % m.group(1)
-    if _OTHER_API_RE.search(path) and path.endswith((".go", ".proto", ".yaml", ".yml")):
-        return "docs/api-contract/"
+def _doc_present(need, changed):
+    if need == "docs/":
+        return any(_DOC_LIKE.search(p) for p in changed)
+    return any(p == need or p.startswith(need) for p in changed)
+
+
+def _required_doc(path, stacks):
+    if stacks is None or "go" in stacks:
+        m = _MIGRATION_RE.match(path)
+        if m:
+            return "docs/erd/%s.mmd" % m.group(1)
+        m = _MODULE_API_RE.match(path)
+        if m:
+            return "docs/api-contract/%s/" % m.group(1)
+        if _OTHER_API_RE.search(path) and path.endswith((".go", ".proto", ".yaml", ".yml")):
+            return "docs/api-contract/"
+    for sid, patterns in _DOC_RULES.items():
+        if (stacks is None or sid in stacks) and any(re.search(p, path) for p in patterns):
+            return "docs/"
     return None
 
 
@@ -299,16 +485,3 @@ def run_go_thresholds(targets, rules=STRUCTURAL_RULES, all_functions=False):
     if proc.returncode != 0:
         return None
     return json.loads(proc.stdout)
-
-
-def analyze_go_source(content, name="snippet.go", ranges=None):
-    """Ukur isi file Go (mis. versi HEAD) lewat file sementara."""
-    tmpdir = tempfile.mkdtemp(prefix="venturo-kinerja-")
-    try:
-        path = os.path.join(tmpdir, os.path.basename(name))
-        with open(path, "w", encoding="utf-8") as fh:
-            fh.write(content)
-        out = run_go_thresholds([{"path": path, "ranges": ranges or []}])
-        return out["files"][0] if out and out["files"] else None
-    finally:
-        shutil.rmtree(tmpdir, ignore_errors=True)

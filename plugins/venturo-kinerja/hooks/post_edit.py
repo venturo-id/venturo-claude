@@ -1,9 +1,12 @@
 """PostToolUse · Edit|Write|MultiEdit — umpan balik ambang kinerja (exit 2).
 
-- File .go di modul Go: go-thresholds untuk file itu saja. Hanya pelanggaran
-  BARU yang dilaporkan: dibanding isi sebelum edit (direkonstruksi dari
-  old_string/new_string; untuk Write dibanding HEAD), dan hanya pada fungsi
-  yang disentuh edit. Magic value (heuristik) tidak dilaporkan di sini.
+- File kode (Go, Python, TS/JS, PHP, Swift, Kotlin, Dart, Java, Vue/Svelte) di
+  repo yang stack-nya dikenali: dispatcher thresholds.py untuk file itu saja.
+  Hanya pelanggaran BARU yang dilaporkan: dibanding isi sebelum edit
+  (direkonstruksi dari old_string/new_string; untuk Write dibanding HEAD), dan
+  hanya pada fungsi yang disentuh edit. Magic value tidak dilaporkan di sini.
+  Bila runtime analyzer presisi tidak ada (go; node + typescript untuk TS/JS),
+  hook dilewati — tidak menebak dengan heuristik.
 - CLAUDE.md/AGENTS.md: > 200 baris (termasuk @import) dan bagian delegasi
   (untuk file root repo) — temuan agent-docs selalu critical di kinerja.
 """
@@ -12,7 +15,9 @@ import difflib
 import os
 import subprocess
 
-from _common import block, git_root, go_repo_root, guarded, lib, project_dir
+from _common import block, git_root, guarded, lib, project_dir, supported
+
+import thresholds as thr
 
 
 def _abs_path(event):
@@ -58,10 +63,11 @@ def changed_ranges(before, after):
 
 
 def _hard(violations):
-    return {(v["symbol"], v["key"]): v for v in violations if not v.get("heuristic")}
+    """Pelanggaran ambang yang dilaporkan hook (magic value terlalu berisik untuk hook)."""
+    return {(v["symbol"], v["key"]): v for v in violations if v["key"] != "magic_values"}
 
 
-def new_go_violations(event, path):
+def new_violations(event, path):
     with open(path, encoding="utf-8", errors="replace") as fh:
         after = fh.read()
     before = before_edit(event, path, after)
@@ -70,23 +76,24 @@ def new_go_violations(event, path):
     ranges = changed_ranges(before, after)
     if not ranges:
         return []
-    out = lib.run_go_thresholds([{"path": path, "ranges": ranges}])
-    if not out or out["files"][0].get("error"):
+    out = thr.analyze([{"path": path, "ranges": ranges}])
+    if not out["files"] or out["files"][0].get("error"):
         return []
     now = _hard(out["files"][0]["violations"])
-    old = _hard((lib.analyze_go_source(before, os.path.basename(path)) or {}).get("violations", [])) if before else {}
+    old = _hard((thr.analyze_source(before, path) or {}).get("violations", [])) if before else {}
     return [v for k, v in now.items() if k not in old or v["value"] > old[k]["value"]]
 
 
-def go_feedback(event, path):
-    news = new_go_violations(event, path)
+def code_feedback(event, path):
+    news = new_violations(event, path)
     if not news:
         return
     rel = os.path.relpath(path, project_dir(event))
     lines = ["venturo-kinerja: pelanggaran ambang struktur BARU di %s (tiap temuan −10 dimensi structural):" % rel]
     for v in sorted(news, key=lambda v: v["line"]):
         sym = v["symbol"] or "(file)"
-        lines.append("- %s:%d %s — %s [%s]" % (rel, v["line"], sym, v["detail"], v["category"]))
+        tag = " (heuristik)" if v.get("heuristic") else ""
+        lines.append("- %s:%d %s — %s [%s]%s" % (rel, v["line"], sym, v["detail"], v["category"], tag))
     lines.append("Perbaiki sekarang: pecah fungsi, early return/guard clause, atau kelompokkan parameter ke struct.")
     block("\n".join(lines))
 
@@ -102,12 +109,20 @@ def agent_doc_feedback(event, path):
               + "\nAturan lengkap: rules/agent-docs.md (render_rule.py agent-docs).")
 
 
+def runtime_ready(path):
+    """False bila bahasa ini butuh runtime presisi yang tidak tersedia (go, node+typescript)."""
+    lang = thr.language_of(path)
+    if lang in ("go", "typescript", "javascript"):
+        return thr.capability(lang, os.path.dirname(path)) == "precise"
+    return True
+
+
 def main(event):
     path = _abs_path(event)
-    if not path or not os.path.isfile(path) or go_repo_root(path) is None:
+    if not path or not os.path.isfile(path) or not supported(path, event):
         return
-    if path.endswith(".go"):
-        go_feedback(event, path)
+    if thr.analyzable(path) and runtime_ready(path):
+        code_feedback(event, path)
     elif lib.is_agent_doc(path):
         agent_doc_feedback(event, path)
 

@@ -21,7 +21,10 @@ Path script: `${CLAUDE_PLUGIN_ROOT}/scripts/` (dev checkout: dua tingkat di atas
    gate `commit_format` atau `trivial_pr` gagal, sampaikan duluan: PR itu tidak akan dinilai.
 2. **Muat rule.** `render_rule.py workflow laporan quality-score quality-score/structural
    quality-score/readability quality-score/doc-sync quality-score/bug agent-docs`, plus skill
-   stack dari `render_rule.py --stack-for .`. Placeholder sudah dirender dari angka mesin skor.
+   stack dari `render_rule.py --stack-for .` (Python/Java: tidak ada skill stack, cukup workflow +
+   ambang umum). Placeholder sudah dirender dari angka mesin skor. Pelanggaran bertanda
+   `heuristic` di status (PHP/Swift/Kotlin/Dart/Java, atau TS/JS tanpa `node_modules/typescript`)
+   wajib dicek ulang dengan membaca kodenya sebelum dimasukkan ke temuan.
 3. **Baca diff** `git diff <merge-base>` (termasuk file untracked yang relevan). Daftar file
    kode yang berubah (bukan test, dokumen, konfigurasi, lockfile, generated).
 4. **Eksplorasi paralel.** Dispatch agent `kinerja-file-explorer`, satu per file kode yang

@@ -8,7 +8,7 @@ menjelaskan ke engineer kenapa tidak perlu.
 
 import os
 
-from _common import emit, go_repo_root, guarded, lib, project_dir
+from _common import emit, guarded, lib, project_dir, supported
 
 import kinerja_status as ks
 
@@ -19,7 +19,7 @@ def pending_docs(repo):
     ref, merge_base = ks.resolve_base(repo, None)
     files = ks.changed_files(repo, merge_base)
     paths = [f["path"] for f in files]
-    doc = lib.doc_sync_check(paths)
+    doc = lib.doc_sync_check(paths, {st["id"] for st in lib.detect_stacks(repo)} or None)
     items = list(doc["missing"])
     code_changed = any(not (p.startswith("docs/") or p.endswith(".md")) for p in paths)
     if os.path.isfile(os.path.join(repo, "CHANGELOG.md")) and code_changed and not doc["changelog_updated"]:
@@ -45,7 +45,7 @@ def main(event):
     if event.get("stop_hook_active"):
         return
     cwd = project_dir(event)
-    if go_repo_root(cwd) is None:
+    if not supported(cwd, event):
         return
     try:
         repo = ks.git(cwd, "rev-parse", "--show-toplevel").strip()

@@ -1,7 +1,7 @@
 {
   "name": "venturo-kinerja",
   "version": "0.1.0",
-  "description": "Menyelaraskan sesi vibe coding dengan AI code review kinerja.venturo.id. Isinya: snapshot mentah 25 context review production (rules/ + rules.lock.json); simulate_score.py, port 1:1 mesin skor kinerja-be; go-thresholds (ambang struktur Go via go/ast, angka dari rules); kinerja_status.py (pelanggaran, gate, prediksi skor, kontrak JSON untuk mod HUD); skill venturo-kinerja-rules/precheck/pr; agent read-only kinerja-file-explorer dan kinerja-verifier; hook ambang Go, guard pesan commit, guard CLAUDE.md/AGENTS.md, pengingat doc-sync, dan peringatan rules basi. Fase 1: Go.",
+  "description": "Menyelaraskan sesi vibe coding dengan AI code review kinerja.venturo.id. Isinya: snapshot mentah 25 context review production (rules/ + rules.lock.json); simulate_score.py, port 1:1 mesin skor kinerja-be; dispatcher ambang struktur multi-bahasa (Go, Python, TS/JS presisi; PHP, Swift, Kotlin, Dart, Java heuristik; angka dari rules); kinerja_status.py (stack, pelanggaran, gate, prediksi skor, kontrak JSON untuk mod HUD); skill venturo-kinerja-rules/precheck/pr; agent read-only kinerja-file-explorer dan kinerja-verifier; hook ambang per bahasa, guard pesan commit, guard CLAUDE.md/AGENTS.md, pengingat doc-sync, dan peringatan rules basi.",
   "author": {
     "name": "Venturo",
     "email": "dev@venturo.id"
@@ -15,6 +15,13 @@
     "rules",
     "simulator",
     "hooks",
-    "golang"
+    "golang",
+    "typescript",
+    "react",
+    "php",
+    "python",
+    "swift",
+    "kotlin",
+    "flutter"
   ]
 }

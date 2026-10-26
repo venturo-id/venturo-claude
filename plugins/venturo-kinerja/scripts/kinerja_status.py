@@ -3,6 +3,7 @@
 
     kinerja_status.py [--json] [--base REF] [--repo PATH]
     kinerja_status.py --record-precheck FINDINGS.json [--base REF] [--repo PATH]
+    kinerja_status.py --stacks [--repo PATH]      # deteksi stack saja ([] = tidak aktif)
 
 Diff = merge-base(BASE, HEAD)..working tree (staged, unstaged, dan file untracked).
 Output --json adalah KONTRAK yang dibaca mod HUD; skemanya didokumentasikan di
@@ -20,6 +21,7 @@ import sys
 
 import kinerja_lib as lib
 import simulate_score as sim
+import thresholds as thr
 
 SCHEMA_VERSION = 1
 STATE_DIR = os.path.join(".claude", "venturo-kinerja")
@@ -98,10 +100,10 @@ def _num(s):
     return int(s) if s.isdigit() else 0  # "-" = file biner
 
 
-def changed_ranges(repo, merge_base, go_files):
+def changed_ranges(repo, merge_base, code_files):
     """{path: [[start, end]]} baris baru per file, dari git diff -U0."""
-    ranges = {f["path"]: [] for f in go_files}
-    tracked = [f["path"] for f in go_files if not f["untracked"]]
+    ranges = {f["path"]: [] for f in code_files}
+    tracked = [f["path"] for f in code_files if not f["untracked"]]
     if not tracked:
         return ranges
     current = None
@@ -138,17 +140,21 @@ def commits_since(repo, merge_base):
 
 # --- pelanggaran ------------------------------------------------------------
 
+def code_files(repo, files):
+    """File diff yang bisa dianalisis ambangnya (bahasa didukung, bukan vendor/generated)."""
+    return [f for f in files if os.path.isfile(os.path.join(repo, f["path"]))
+            and thr.analyzable(os.path.join(repo, f["path"]))]
+
+
 def threshold_violations(repo, merge_base, files):
-    """Pelanggaran go-thresholds pada fungsi/blok yang disentuh diff. None = Go tidak ada."""
-    go_files = [f for f in files if f["path"].endswith(".go") and os.path.isfile(os.path.join(repo, f["path"]))]
-    if not go_files:
-        return []
-    ranges = changed_ranges(repo, merge_base, go_files)
+    """(pelanggaran pada fungsi/blok yang disentuh diff, status analyzer per bahasa)."""
+    code = code_files(repo, files)
+    if not code:
+        return [], {}
+    ranges = changed_ranges(repo, merge_base, code)
     targets = [{"path": os.path.join(repo, f["path"]), "ranges": ranges.get(f["path"], [])}
-               for f in go_files if f["untracked"] or ranges.get(f["path"])]
-    out = lib.run_go_thresholds(targets)
-    if out is None:
-        return None
+               for f in code if f["untracked"] or ranges.get(f["path"])]
+    out = thr.analyze(targets)
     violations = []
     for rep in out["files"]:
         rel = os.path.relpath(rep["path"], repo).replace(os.sep, "/")
@@ -156,9 +162,10 @@ def threshold_violations(repo, merge_base, files):
             violations.append({
                 "file": rel, "line": v["line"], "symbol": v["symbol"], "category": v["category"],
                 "dimension": "structural", "detail": v["detail"], "key": v["key"], "value": v["value"],
-                "max": v["max"], "heuristic": bool(v.get("heuristic")), "source": "go-thresholds",
+                "max": v["max"], "heuristic": bool(v.get("heuristic")), "language": rep["language"],
+                "source": "go-thresholds" if rep["language"] == "go" else "thresholds",
             })
-    return violations
+    return violations, out["analyzers"]
 
 
 def agent_doc_violations(repo, files):
@@ -336,6 +343,28 @@ def doc_sync_violation(files, doc):
              "source": "doc-sync"}]
 
 
+def static_analysis(repo, merge_base, files, stacks):
+    """Pelanggaran statis + status analyzer; peringatan bila analyzer tidak tersedia."""
+    thresholds, analyzers = threshold_violations(repo, merge_base, files)
+    for lang in {st["language"] for st in stacks}:
+        analyzers.setdefault(lang, thr.capability(lang, repo))
+    warnings = ["analyzer %s tidak tersedia (%s): ambang struktur tidak dicek" % (lang, thr.RUNTIME_HINT.get(lang, "?"))
+                for lang, state in sorted(analyzers.items()) if state == "unavailable"]
+    agent_viol = agent_doc_violations(repo, files)
+    stack_ids = {st["id"] for st in stacks} or None
+    doc = lib.doc_sync_check([f["path"] for f in files], stack_ids)
+    return thresholds + agent_viol + doc_sync_violation(files, doc), agent_viol, doc, analyzers, warnings
+
+
+def changed_summary(repo, files, lines):
+    by_lang = {}
+    for f in files:
+        lang = thr.language_of(f["path"])
+        if lang:
+            by_lang[lang] = by_lang.get(lang, 0) + 1
+    return {"files": len(files), "lines": lines, "go_files": by_lang.get("go", 0), "by_language": by_lang}
+
+
 def build_status(repo, base=None, now=None):
     repo = git(repo, "rev-parse", "--show-toplevel").strip()
     ref, merge_base = resolve_base(repo, base)
@@ -343,14 +372,8 @@ def build_status(repo, base=None, now=None):
     files = changed_files(repo, merge_base)
     lines = sum(f["additions"] + f["deletions"] for f in files)
     dhash = diff_hash(repo, merge_base, files)
-    warnings = []
-    thresholds = threshold_violations(repo, merge_base, files)
-    if thresholds is None:
-        warnings.append("go tidak tersedia: ambang struktur tidak dicek")
-        thresholds = []
-    agent_viol = agent_doc_violations(repo, files)
-    doc = lib.doc_sync_check([f["path"] for f in files])
-    violations = thresholds + agent_viol + doc_sync_violation(files, doc)
+    stacks = lib.detect_stacks(repo)
+    violations, agent_viol, doc, analyzers, warnings = static_analysis(repo, merge_base, files, stacks)
     precheck_info, precheck = load_precheck(repo, head, dhash)
     cfg, cfg_info = sim.load_config(lib.RULES_DIR)
     payload = build_payload(files, violations, doc, precheck)
@@ -371,7 +394,9 @@ def build_status(repo, base=None, now=None):
         "schema_version": SCHEMA_VERSION,
         "generated_at": (now or _dt.datetime.now(_dt.timezone.utc)).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "repo": repo, "base": {"ref": ref, "merge_base": merge_base}, "head": head, "diff_hash": dhash,
-        "changed": {"files": len(files), "lines": lines, "go_files": sum(f["path"].endswith(".go") for f in files)},
+        "changed": changed_summary(repo, files, lines),
+        "stacks": stacks,
+        "analyzers": analyzers,
         "predicted": predicted,
         "violations": violations,
         "gates": gates,
@@ -416,6 +441,10 @@ def format_text(st):
     p = st["predicted"]
     lines = ["kinerja status — base %s (%s), %d file / %d baris berubah"
              % (st["base"]["ref"], st["base"]["merge_base"][:8], st["changed"]["files"], st["changed"]["lines"])]
+    stacks = ", ".join("%s%s%s" % (s["id"], "/" + s["framework"] if s.get("framework") else "",
+                                   "" if s["path"] == "." else " @" + s["path"]) for s in st["stacks"])
+    analyzers = ", ".join("%s=%s" % kv for kv in sorted(st["analyzers"].items()))
+    lines.append("Stack: %s · analyzer: %s" % (stacks or "tidak dikenali", analyzers or "-"))
     if p["status"] in ("scored", "blocked"):
         lines.append("Prediksi skor final: %d (%s)" % (p["final"], "precheck" if p["source"] == "precheck"
                                                        else "statis, dimensi bug belum diprediksi"))
@@ -425,10 +454,12 @@ def format_text(st):
     else:
         lines.append("Tidak ada prediksi skor: %s" % p["status"])
     if st["violations"]:
-        lines.append("Perbaikan (urut poin final terbanyak):")
+        lines.append("Perbaikan (urut poin final terbanyak; ~ = heuristik):")
         for v in st["violations"]:
             loc = v["file"] + (":%d" % v["line"] if v["line"] else "")
-            lines.append("  +%-2d %-22s %s %s — %s" % (v["points_final"], v["category"], loc, v["symbol"], v["detail"]))
+            mark = "~" if v.get("heuristic") else " "
+            lines.append(" %s+%-2d %-22s %s %s — %s" % (mark, v["points_final"], v["category"], loc, v["symbol"],
+                                                       v["detail"]))
     lines.append("Gate:")
     for g in st["gates"]:
         lines.append("  [%s] %-14s %s" % ("ok" if g["ok"] else "!!", g["id"], g["detail"]))
@@ -443,7 +474,12 @@ def main(argv=None):
     ap.add_argument("--base", help="ref base PR (default: origin/HEAD, lalu production/main/...)")
     ap.add_argument("--repo", default=".", help="path repo (default: direktori kerja)")
     ap.add_argument("--record-precheck", metavar="FILE", help="simpan temuan precheck untuk diff ini")
+    ap.add_argument("--stacks", action="store_true",
+                    help="hanya deteksi stack repo (JSON list, murah; [] = plugin tidak aktif di repo ini)")
     args = ap.parse_args(argv)
+    if args.stacks:
+        print(json.dumps(lib.supported_repo(os.path.abspath(args.repo)), ensure_ascii=False))
+        return 0
     try:
         repo = args.repo
         if args.record_precheck:
