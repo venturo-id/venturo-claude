@@ -77,14 +77,14 @@ const BAND = {
   },
 } as const
 
-type World = { status: () => string; isGoRepo?: boolean; ghApproved?: boolean }
+type World = { status: () => string; diff?: () => string; isGoRepo?: boolean; ghApproved?: boolean }
 
 // Dunia di bawah plugin: plugin venturo-kinerja bersebelahan via env, repo Go, status dari `world`.
-function stubWorld(on: On, world: World): { toasts: string[]; runs: string[][] } {
+function stubWorld(on: On, world: World): { toasts: string[]; runs: string[][]; clock: ReturnType<typeof mock.clock> } {
   const toasts: string[] = []
   const runs: string[][] = []
   mock.env(on, { VENTURO_KINERJA_ROOT: KINERJA, HOME: '/home/dev' })
-  mock.clock(on, { now: 100_000 })
+  const clock = mock.clock(on, { now: 100_000 })
   on('command.register', () => ({ value: { command: 'kinerja' } }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('fs.exists', (_, e) => {
@@ -98,6 +98,10 @@ function stubWorld(on: On, world: World): { toasts: string[]; runs: string[][] }
   on('fs.read', (_, e) => ({ value: e.path.endsWith('structural.md') ? STRUCTURAL_MD : SCORING_MD }))
   on('process.run', (_, e) => {
     runs.push([...e.argv])
+    if (e.argv[0] === 'git') {
+      const out = e.argv[1] === 'diff' ? (world.diff?.() ?? '') : ''
+      return { value: { exitCode: 0, stdout: out, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+    }
     if (e.argv[0] === 'gh') {
       const pr = world.ghApproved === true ? { state: 'OPEN', reviewDecision: 'APPROVED' } : { state: 'OPEN', reviewDecision: '' }
       return { value: { exitCode: 0, stdout: JSON.stringify(pr), stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
@@ -110,7 +114,7 @@ function stubWorld(on: On, world: World): { toasts: string[]; runs: string[][] }
   })
   on('ui.status', () => ({ value: undefined }))
   on('tool.call', () => ({ result: {} }))
-  return { toasts, runs }
+  return { toasts, runs, clock }
 }
 
 describe('lib', () => {
@@ -227,6 +231,27 @@ describe('mod', () => {
     current = statusJson({ violations: [LONG_FUNC] })
     await $.tool.call({ tool: 'Write', file_path: `${REPO}/internal/user.service.go`, content: 'package user' })
     await $.command.run(KINERJA_COMMAND)
+    expect(world.toasts).toContain(
+      'Kinerja: −3 oversized-function UserService.Create internal/user.service.go:40 — fungsi 63 baris > 50',
+    )
+  })
+
+  test('edit manual di luar Claude tertangkap polling git diff', async ($, on) => {
+    let current = statusJson()
+    let diff = 'diff --git a/x.go b/x.go'
+    const world = stubWorld(on, { status: () => current, diff: () => diff })
+    await $.session.start({ cwd: REPO, surface: 'terminal', isInteractive: true })
+    await world.clock.settle()
+    const statusRuns = () => world.runs.filter(argv => argv[0] === 'python3').length
+    const before = statusRuns()
+
+    await world.clock.advance(8_000)
+    expect(statusRuns()).toBe(before)
+
+    current = statusJson({ violations: [LONG_FUNC] })
+    diff = 'diff --git a/x.go b/x.go\n+func Long() {}'
+    await world.clock.advance(8_000)
+    expect(statusRuns()).toBe(before + 1)
     expect(world.toasts).toContain(
       'Kinerja: −3 oversized-function UserService.Create internal/user.service.go:40 — fungsi 63 baris > 50',
     )

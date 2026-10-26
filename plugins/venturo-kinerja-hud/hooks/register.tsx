@@ -30,6 +30,11 @@ const isHidden = atom({ plugin: 'venturo-kinerja-hud', key: 'isHidden' } as cons
 const isExpanded = atom({ plugin: 'venturo-kinerja-hud', key: 'isExpanded' } as const, false)
 
 const STATUS_TIMEOUT_MS = 20_000
+const GIT_TIMEOUT_MS = 5_000
+// Edit di luar Claude (IDE, git checkout) tertangkap lewat polling git diff murah;
+// kinerja_status hanya dijalankan ulang bila sidik diff berubah.
+const POLL_MS = 8_000
+const MAX_UNTRACKED_STAT = 50
 const GH_TIMEOUT_MS = 8_000
 // Edit beruntun dalam satu turn cukup dihitung ulang sekali per jeda ini;
 // sisanya ditangkap turn.complete.
@@ -50,6 +55,9 @@ const hud = {
   running: undefined as Promise<HudStatus> | undefined,
   // Kunci keadaan diff yang sudah diperingatkan saat push (peringatan sekali).
   warnedPushKey: undefined as string | undefined,
+  // Sidik diff terakhir yang sudah dihitung statusnya.
+  fingerprint: '',
+  isPolling: false,
 }
 
 async function findKinerjaRoot($: EngineInterface): Promise<string | undefined> {
@@ -109,6 +117,44 @@ async function runStatus($: EngineInterface, root: string): Promise<HudStatus> {
   }
 }
 
+async function gitOutput($: EngineInterface, args: string[]): Promise<string> {
+  const ran = await $.process.run(['git', ...args], { cwd: hud.cwd, timeoutMs: GIT_TIMEOUT_MS })
+  return ran.exitCode === 0 ? ran.stdout : `exit ${ran.exitCode}`
+}
+
+/** Sidik working tree: diff terhadap HEAD + nama dan mtime file untracked. */
+async function diffFingerprint($: EngineInterface): Promise<string> {
+  const diff = await gitOutput($, ['diff', 'HEAD', '--no-color', '--no-ext-diff'])
+  const untracked = (await gitOutput($, ['ls-files', '--others', '--exclude-standard']))
+    .split('\n')
+    .filter(name => name !== '')
+    .slice(0, MAX_UNTRACKED_STAT)
+  const stamps: string[] = []
+  for (const name of untracked) {
+    const stat = await $.fs.stat(`${hud.cwd}/${name}`).catch(() => undefined)
+    stamps.push(`${name}@${stat?.mtimeMs ?? 0}:${stat?.size ?? 0}`)
+  }
+  return `${diff}\n--untracked--\n${stamps.join('\n')}`
+}
+
+async function pollDiff($: EngineInterface): Promise<void> {
+  if (!hud.isActive || hud.isPolling || hud.running !== undefined) {
+    return
+  }
+  hud.isPolling = true
+  try {
+    if ((await diffFingerprint($)) !== hud.fingerprint) {
+      await refresh($)
+    }
+  } finally {
+    hud.isPolling = false
+  }
+}
+
+function pollInBackground($: EngineInterface): void {
+  pollDiff($).catch(() => undefined)
+}
+
 async function refresh($: EngineInterface): Promise<HudStatus | null> {
   const root = hud.kinerjaRoot
   if (!hud.isActive || root === undefined) {
@@ -119,6 +165,7 @@ async function refresh($: EngineInterface): Promise<HudStatus | null> {
   }
   hud.running = (async () => {
     const previous = await read($, status)
+    hud.fingerprint = await diffFingerprint($).catch(() => '')
     const next = await runStatus($, root)
     hud.lastRefreshAt = await $.clock.now()
     hud.isDirty = false
@@ -171,6 +218,7 @@ export const register: Register = on => {
     if (hud.isActive && hud.kinerjaRoot !== undefined) {
       hud.rulesText = await loadRulesText($, hud.kinerjaRoot)
       refreshInBackground($)
+      $.clock.every(POLL_MS, () => pollInBackground($))
     }
     return started
   })

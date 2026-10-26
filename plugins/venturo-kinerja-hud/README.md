@@ -19,7 +19,7 @@ kecuali `gh pr view` saat push.
 
 | Fitur | Bentuk | Kapan |
 |---|---|---|
-| Score meter | Band di atas prompt: `Kinerja ≈86 · Bug – · Struktur 80 (2) · Baca 100 · Doc 100`. Tombol **Detail** (hotkey `k`) membuka daftar gate gagal + pelanggaran beserta poin final yang kembali bila diperbaiki. Tombol **Sembunyikan** menyembunyikan band | Setelah edit file `.go`/CLAUDE.md/CHANGELOG/docs, setelah `git commit`, dan di akhir turn |
+| Score meter | Band di atas prompt: `Kinerja ≈86 · Bug – · Struktur 80 (2) · Baca 100 · Doc 100`. Tombol **Detail** (hotkey `k`) membuka daftar gate gagal + pelanggaran beserta poin final yang kembali bila diperbaiki. Tombol **Sembunyikan** menyembunyikan band | Setelah Claude mengedit file `.go`/CLAUDE.md/CHANGELOG/docs, setelah `git commit`, di akhir turn, dan **setiap 8 detik bila `git diff` berubah** (edit manual di IDE, `git checkout`, dll.), bahkan sebelum commit |
 | Toast pelanggaran baru | `Kinerja: −3 oversized-function UserService.Create internal/user.service.go:40 — fungsi 63 baris > 50` | Hanya pelanggaran yang **baru** muncul |
 | Status line | `kinerja ≈86`, `kinerja ⛔ format commit`, `⚠ rules 16h` | Setiap refresh |
 | Ringkasan ambang di system prompt | Section `venturo-kinerja-hud:rules` (±8 baris; angka dibaca dari `rules/quality-score/*.md`) | Setiap request model di repo Go. Rule tidak perlu ditulis di CLAUDE.md, jadi tidak membebani batas 200 baris `agent-docs` |
