@@ -1,0 +1,289 @@
+{
+  "schema_version": 1,
+  "source": {
+    "url": "https://kinerja.venturo.id/context",
+    "environment": "production",
+    "method": "manual-browser-snapshot",
+    "note": "Konten mentah (termasuk front-matter) dibaca dari textarea dialog Edit/Submit Context versi aktif tanpa menyimpan apa pun; sha256 dihitung di browser lalu dicocokkan ulang dengan file di sini. Snapshot manual sampai endpoint export KJ-G tersedia.",
+    "kinerja_be_commit": "da582b1e"
+  },
+  "synced_at": "2026-10-26T09:58:00Z",
+  "count": 25,
+  "contexts": [
+    {
+      "slug": "agent-docs",
+      "file": "agent-docs.md",
+      "category": "stack",
+      "skill_type": "required",
+      "version": 2,
+      "description": "Wajib: cek perubahan CLAUDE.md/AGENTS.md (ukuran, isi relevan, delegasi sub agent); semua temuan critical.",
+      "sha256": "d3b8909a9c919e00c8488dd278e23ae18d610e997042da63aec3431a225938b3",
+      "bytes": 4529,
+      "active_updated_at": "2026-10-19T03:45:24.994439Z"
+    },
+    {
+      "slug": "architecture",
+      "file": "architecture.md",
+      "category": "manual_review",
+      "skill_type": "manual",
+      "version": 4,
+      "description": "",
+      "sha256": "92b05a3d9f2351f416277786c7fcb022b0d92f31beacc3347de054e0714604ac",
+      "bytes": 3287,
+      "active_updated_at": "2026-09-01T03:06:48.838352Z"
+    },
+    {
+      "slug": "caveman",
+      "file": "caveman.md",
+      "category": "stack",
+      "skill_type": "required",
+      "version": 2,
+      "description": "",
+      "sha256": "c1c9bb28471af339c435c4522dda568ef50d102bca6273c1f1918edc3c6826c0",
+      "bytes": 911,
+      "active_updated_at": "2026-07-15T07:54:01.176918Z"
+    },
+    {
+      "slug": "dependency",
+      "file": "dependency.md",
+      "category": "manual_review",
+      "skill_type": "manual",
+      "version": 2,
+      "description": "",
+      "sha256": "4dae6359372759d7505f4f751cf2ee2d5399be94373358a572bf2615d652cc9b",
+      "bytes": 2816,
+      "active_updated_at": "2026-07-28T11:32:17.106699Z"
+    },
+    {
+      "slug": "flutter",
+      "file": "flutter.md",
+      "category": "stack",
+      "skill_type": "dynamic",
+      "version": 5,
+      "description": "Skill stack Flutter/Dart: repo dengan pubspec.yaml atau file .dart.",
+      "sha256": "50d58d7956bc6439ebdbb06b5c1c506f704563690c4566f9b85b62efe3c4e7dc",
+      "bytes": 3371,
+      "active_updated_at": "2026-08-11T04:14:21.776654Z"
+    },
+    {
+      "slug": "golang",
+      "file": "golang.md",
+      "category": "stack",
+      "skill_type": "dynamic",
+      "version": 2,
+      "description": "Skill stack Go: repo dengan go.mod atau file .go.",
+      "sha256": "278ff8834bfc92b88854a9da5cc8298b37278f963265b12656273dca1c5c8dac",
+      "bytes": 3236,
+      "active_updated_at": "2026-07-15T07:54:01.194341Z"
+    },
+    {
+      "slug": "ios-swift",
+      "file": "ios-swift.md",
+      "category": "stack",
+      "skill_type": "dynamic",
+      "version": 6,
+      "description": "Skill stack iOS/Swift: file .swift, Xcode project, SwiftUI/UIKit.",
+      "sha256": "92ac2047b68a8029e33887054c641037d5059b4de0c93628c79684f7c8ca8712",
+      "bytes": 4851,
+      "active_updated_at": "2026-08-11T07:22:12.377475Z"
+    },
+    {
+      "slug": "kotlin",
+      "file": "kotlin.md",
+      "category": "stack",
+      "skill_type": "dynamic",
+      "version": 4,
+      "description": "Skill stack Kotlin/Android: file .kt/.kts, Gradle Android.",
+      "sha256": "1b3dd560d61630b577bd9bf4e662d40becd198700c8133c81645de273983cc86",
+      "bytes": 3380,
+      "active_updated_at": "2026-08-11T04:14:21.776654Z"
+    },
+    {
+      "slug": "laporan",
+      "file": "laporan.md",
+      "category": "stack",
+      "skill_type": "required",
+      "version": 15,
+      "description": "",
+      "sha256": "365ea4a365efb67e46d5ed08bb4ceb3b2e348f3175543215a52c43e81940e9e3",
+      "bytes": 2795,
+      "active_updated_at": "2026-10-26T09:25:13.424015Z"
+    },
+    {
+      "slug": "node",
+      "file": "node.md",
+      "category": "stack",
+      "skill_type": "dynamic",
+      "version": 5,
+      "description": "Skill stack Node.js/TypeScript backend: package.json tanpa React.",
+      "sha256": "86e524269d77d163c494a78452e0cf679a50c921ce9f296b7833ec6a44a40e99",
+      "bytes": 3940,
+      "active_updated_at": "2026-08-11T04:14:21.776654Z"
+    },
+    {
+      "slug": "performance",
+      "file": "performance.md",
+      "category": "manual_review",
+      "skill_type": "manual",
+      "version": 2,
+      "description": "",
+      "sha256": "78fb48d6a7b1786c4a75a96d56b2f71445df1544e67b6f7cb52ae985a0ffc69c",
+      "bytes": 3175,
+      "active_updated_at": "2026-07-28T11:32:17.106699Z"
+    },
+    {
+      "slug": "php",
+      "file": "php.md",
+      "category": "stack",
+      "skill_type": "dynamic",
+      "version": 1,
+      "description": "Skill stack PHP: repo dengan composer.json atau file .php (Laravel, CodeIgniter, Slim).",
+      "sha256": "bbbe6a3d1163fbed6dd755ab1c50459125d8f6103ac29dffec94b4535455a7f1",
+      "bytes": 3492,
+      "active_updated_at": "2026-09-11T09:31:46.363945Z"
+    },
+    {
+      "slug": "php/codeigniter",
+      "file": "php/codeigniter.md",
+      "category": "stack",
+      "skill_type": "on_demand",
+      "version": 1,
+      "description": "Aturan review CodeIgniter: Query Builder, validasi input, CSRF, session/auth, escaping view.",
+      "sha256": "f4909c9bbfc4fcb6b26d1b74834b43044201b7e551aa6f566ddc27ba0d49e508",
+      "bytes": 1395,
+      "active_updated_at": "2026-09-11T09:31:46.388413Z"
+    },
+    {
+      "slug": "php/laravel",
+      "file": "php/laravel.md",
+      "category": "stack",
+      "skill_type": "on_demand",
+      "version": 1,
+      "description": "Aturan review Laravel: Eloquent N+1, mass assignment, Form Request, Policy/Gate, queue, migration.",
+      "sha256": "8482c57a4b49613c9138e3178ee5d0fc4265f50041f3e86646f762af9bc5d933",
+      "bytes": 1682,
+      "active_updated_at": "2026-09-11T09:31:46.380963Z"
+    },
+    {
+      "slug": "php/slim",
+      "file": "php/slim.md",
+      "category": "stack",
+      "skill_type": "on_demand",
+      "version": 1,
+      "description": "Aturan review Slim: urutan middleware, kontrak PSR-7, container/DI, error handler.",
+      "sha256": "d694d9b4aa4fd57e26fe9b3aeea0c40fe343e5763bb8c5e960f85041286176bf",
+      "bytes": 1310,
+      "active_updated_at": "2026-09-11T09:31:46.399545Z"
+    },
+    {
+      "slug": "quality",
+      "file": "quality.md",
+      "category": "manual_review",
+      "skill_type": "manual",
+      "version": 4,
+      "description": "",
+      "sha256": "3791cf72123afa69812a94ff30c7b77ce81a547ad87c14cda62a66515faf714b",
+      "bytes": 3820,
+      "active_updated_at": "2026-09-02T04:09:18.920976Z"
+    },
+    {
+      "slug": "quality-score",
+      "file": "quality-score.md",
+      "category": "quality_score",
+      "skill_type": "required",
+      "version": 1,
+      "description": "Aturan utama quality score: angka deduction + referensi sub skill per dimensi.",
+      "sha256": "de539df67ea245b4facf57630088fb695af05e3098ddae30cbb0ff4da1d2294c",
+      "bytes": 435,
+      "active_updated_at": "2026-10-26T09:25:13.424015Z"
+    },
+    {
+      "slug": "quality-score/bug",
+      "file": "quality-score/bug.md",
+      "category": "quality_score",
+      "skill_type": "required",
+      "version": 1,
+      "description": "Dimensi bug: skor bug code review (penalti severity) ikut skor final.",
+      "sha256": "bae9a26d7eabe1a425577f26988188bea9683225e064a721ea2a74fb51f14072",
+      "bytes": 473,
+      "active_updated_at": "2026-10-26T09:25:13.424015Z"
+    },
+    {
+      "slug": "quality-score/doc-sync",
+      "file": "quality-score/doc-sync.md",
+      "category": "quality_score",
+      "skill_type": "required",
+      "version": 1,
+      "description": "Aturan dimensi doc_sync: bobot, gate boolean, dan kategori evidence-nya.",
+      "sha256": "0da6779cc0073c42e81f7fed41819fcc2c4e5dad81766abefc5487cbdd12cc22",
+      "bytes": 1815,
+      "active_updated_at": "2026-09-04T03:06:34.170738Z"
+    },
+    {
+      "slug": "quality-score/readability",
+      "file": "quality-score/readability.md",
+      "category": "quality_score",
+      "skill_type": "required",
+      "version": 1,
+      "description": "Aturan dimensi readability: bobot dan kategori temuannya.",
+      "sha256": "167642934a6bd7a7e52af3ec072288c527d0b35427e92523ced4c53ca71ca48e",
+      "bytes": 2154,
+      "active_updated_at": "2026-09-04T03:06:34.170738Z"
+    },
+    {
+      "slug": "quality-score/structural",
+      "file": "quality-score/structural.md",
+      "category": "quality_score",
+      "skill_type": "required",
+      "version": 2,
+      "description": "Aturan dimensi structural: bobot, ambang struktur, dan kategori temuannya.",
+      "sha256": "7175976dd8f21da37992f42507a6f9c2c6cc0b1e48c31597d0718dd94629bcd2",
+      "bytes": 4241,
+      "active_updated_at": "2026-09-07T03:29:22.526466Z"
+    },
+    {
+      "slug": "react",
+      "file": "react.md",
+      "category": "stack",
+      "skill_type": "dynamic",
+      "version": 4,
+      "description": "Skill stack React web: package.json dengan dependency react.",
+      "sha256": "ce7cde3315bb911d7cf6981a6119489f45c05cdccde2871b9e73ad17a573d0b3",
+      "bytes": 3103,
+      "active_updated_at": "2026-08-11T04:14:21.776654Z"
+    },
+    {
+      "slug": "react-native",
+      "file": "react-native.md",
+      "category": "stack",
+      "skill_type": "dynamic",
+      "version": 4,
+      "description": "Skill stack React Native: package.json dengan dependency react-native.",
+      "sha256": "0724db36a9563556a5c22ef77418e92321723366342436e6da1774ea45399a17",
+      "bytes": 3124,
+      "active_updated_at": "2026-08-11T04:14:21.776654Z"
+    },
+    {
+      "slug": "security",
+      "file": "security.md",
+      "category": "manual_review",
+      "skill_type": "manual",
+      "version": 2,
+      "description": "",
+      "sha256": "f5f8ef9ff3cb934d722cef3d9266d0bb7cfd210034d0e44919dab69c037c14e2",
+      "bytes": 2912,
+      "active_updated_at": "2026-07-28T11:32:17.106699Z"
+    },
+    {
+      "slug": "workflow",
+      "file": "workflow.md",
+      "category": "stack",
+      "skill_type": "required",
+      "version": 12,
+      "description": "",
+      "sha256": "7a97c521c1862d1820a336f95c2181ae1b10e60300db90939d41c23e6cf74bef",
+      "bytes": 9573,
+      "active_updated_at": "2026-10-14T02:52:13.035501Z"
+    }
+  ]
+}
