@@ -298,6 +298,17 @@ describe('mod', () => {
     await ui.unmount()
   })
 
+  test('monorepo tanpa manifest di root: aktif karena kinerja_status menemukan stack di subfolder', async ($, on) => {
+    const sub = () => JSON.stringify({ ...JSON.parse(statusJson()), stacks: [{ id: 'node', framework: 'express' }] })
+    stubWorld(on, { status: sub, rootNames: ['apps', 'README.md'] })
+    await $.session.start({ cwd: REPO, surface: 'terminal', isInteractive: true })
+    const result = await $.command.run(KINERJA_COMMAND)
+    expect(result.text).toContain('stack: node (express)')
+    const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+    expect(await ui.find({ type: 'Text', text: /Kinerja ≈90/ })).toBeDefined()
+    await ui.unmount()
+  })
+
   test('kinerja_status melaporkan stacks kosong: band disembunyikan', async ($, on) => {
     const noStack = () => JSON.stringify({ ...JSON.parse(statusJson()), stacks: [] })
     stubWorld(on, { status: noStack, rootNames: ['package.json'] })

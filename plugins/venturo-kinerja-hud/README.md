@@ -45,8 +45,10 @@ Mod aktif bila folder sesi adalah repo git dan root-nya memuat salah satu manife
 | `build.gradle(.kts)`, `settings.gradle(.kts)` | Kotlin/Android |
 | `pubspec.yaml` | Dart/Flutter |
 
-Bila `kinerja_status` melaporkan `stacks: []`, band disembunyikan. `/kinerja` selalu menjelaskan
-kenapa mod tidak aktif.
+Daftar di atas hanya dipakai sebelum status pertama selesai dihitung. Sesudahnya, acuannya `stacks`
+dari `kinerja_status`, yang juga memindai subfolder monorepo (`apps/*`, `packages/*`, `services/*`, …).
+Jadi monorepo tanpa manifest di root tetap aktif, dan bila `kinerja_status` melaporkan `stacks: []`,
+band disembunyikan. `/kinerja` selalu menjelaskan kenapa mod tidak aktif.
 
 ## Menemukan plugin venturo-kinerja
 

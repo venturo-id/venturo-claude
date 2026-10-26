@@ -59,7 +59,9 @@ const hud = {
   // Sidik diff terakhir yang sudah dihitung statusnya.
   fingerprint: '',
   isPolling: false,
-  stacks: [] as string[],
+  // Stack dari manifest root sampai kinerja_status pertama selesai; sesudahnya
+  // `stacks` laporan status (termasuk subfolder monorepo) yang jadi acuan.
+  hasStack: false,
 }
 
 async function findKinerjaRoot($: EngineInterface): Promise<string | undefined> {
@@ -89,9 +91,6 @@ async function findKinerjaRoot($: EngineInterface): Promise<string | undefined> 
 }
 
 async function rootStacks($: EngineInterface): Promise<string[]> {
-  if (!(await $.fs.exists(`${hud.cwd}/.git`))) {
-    return []
-  }
   const entries = await $.fs.list(hud.cwd).catch(() => [])
   return detectStacks(entries.map(entry => entry.name))
 }
@@ -179,6 +178,9 @@ async function refresh($: EngineInterface): Promise<HudStatus | null> {
     const next = await runStatus($, root)
     hud.lastRefreshAt = await $.clock.now()
     hud.isDirty = false
+    if (next.stacks !== null) {
+      hud.hasStack = next.stacks.length > 0
+    }
     await update($, status, () => next)
     $.ui.status(statusLineText(next))
     const toast = toastText(newViolations(previous, next))
@@ -224,8 +226,8 @@ export const register: Register = on => {
       description: 'Prediksi skor Kinerja + pelanggaran diff ini (args: show | hide)',
     })
     hud.kinerjaRoot = await findKinerjaRoot($)
-    hud.stacks = await rootStacks($)
-    hud.isActive = hud.kinerjaRoot !== undefined && hud.stacks.length > 0
+    hud.isActive = hud.kinerjaRoot !== undefined && (await $.fs.exists(`${hud.cwd}/.git`))
+    hud.hasStack = hud.isActive && (await rootStacks($)).length > 0
     if (hud.isActive && hud.kinerjaRoot !== undefined) {
       hud.rulesText = await loadRulesText($, hud.kinerjaRoot)
       refreshInBackground($)
@@ -244,15 +246,18 @@ export const register: Register = on => {
       return { text: 'HUD Kinerja: plugin venturo-kinerja tidak ditemukan. Pasang venturo-kinerja@venturo-tools atau set VENTURO_KINERJA_ROOT.' }
     }
     if (!hud.isActive) {
-      return { text: 'HUD Kinerja: stack repo ini tidak dikenali (tidak ada go.mod, package.json, composer.json, pyproject.toml/requirements.txt, Package.swift/*.xcodeproj, build.gradle, atau pubspec.yaml di root).' }
+      return { text: 'HUD Kinerja: folder sesi ini bukan root repo git.' }
     }
     const fresh = await refresh($)
+    if (!hud.hasStack) {
+      return { text: 'HUD Kinerja: stack repo ini tidak dikenali (tidak ada go.mod, package.json, composer.json, pyproject.toml/requirements.txt, Package.swift/*.xcodeproj, build.gradle, atau pubspec.yaml di root maupun subfolder app).' }
+    }
     return { text: fresh === null ? 'HUD Kinerja: status belum tersedia.' : reportText(fresh, REPORT_LIMIT) }
   })
 
   on('prompt.compose', async ($, e, next) => {
     const composed = await next(e)
-    if (!hud.isActive || hud.rulesText === undefined) {
+    if (!hud.isActive || !hud.hasStack || hud.rulesText === undefined) {
       return composed
     }
     return {
@@ -280,7 +285,7 @@ export const register: Register = on => {
 
   // Penahan push/PR: fail-open, kegagalan hook ini tidak pernah memblokir.
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
-    if (!hud.isActive || !isPushCommand(e.command)) {
+    if (!hud.isActive || !hud.hasStack || !isPushCommand(e.command)) {
       return next(e)
     }
     const fresh = await refresh($)
@@ -315,8 +320,7 @@ export const register: Register = on => {
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const current = await read($, status)
-    const hasNoStack = current?.stacks !== null && current?.stacks.length === 0
-    if (!hud.isActive || current === null || hasNoStack || e.props.hasSurvey || (await read($, isHidden))) {
+    if (!hud.isActive || !hud.hasStack || current === null || e.props.hasSurvey || (await read($, isHidden))) {
       return next(e)
     }
     const { Box, Button, Text } = $.ui.resolve(e)
