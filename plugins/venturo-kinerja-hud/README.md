@@ -20,12 +20,13 @@ kecuali `gh pr view` saat push.
 
 | Fitur | Bentuk | Kapan |
 |---|---|---|
-| Score meter | Band di atas prompt: `Kinerja ≈86 · Bug – · Struktur 80 (2) · Baca 100 · Doc 100`. Tombol **Detail** (hotkey `k`) membuka daftar gate gagal + pelanggaran beserta poin final yang kembali bila diperbaiki. Tombol **Sembunyikan** menyembunyikan band | Setelah Claude mengedit file kode (semua bahasa yang didukung), manifest, CLAUDE.md, CHANGELOG, atau docs; setelah `git commit`, di akhir turn, dan **setiap 8 detik bila `git diff` berubah** (edit manual di IDE, `git checkout`, dll.), bahkan sebelum commit |
+| Score meter | Band di atas prompt: `Kinerja ≈86 · Bug – · Struktur 80 (2) · Baca 100 · Doc 100`. Tombol **Detail** (hotkey `k`) membuka daftar gate gagal + pelanggaran beserta poin final yang kembali bila diperbaiki. Tombol **Ringkas** mengecilkan band menjadi satu baris (`kinerja ≈86 [ Tampilkan ]`); **Tampilkan** mengembalikannya | Setelah Claude mengedit file kode (semua bahasa yang didukung), manifest, CLAUDE.md, CHANGELOG, atau docs; setelah `git commit`, di akhir turn, dan **setiap 8 detik bila `git diff` berubah** (edit manual di IDE, `git checkout`, dll.), bahkan sebelum commit |
 | Toast pelanggaran baru | `Kinerja: −3 oversized-function UserService.Create internal/user.service.go:40 — fungsi 63 baris > 50` | Hanya pelanggaran yang **baru** muncul |
 | Status line | `kinerja ≈86`, `kinerja ⛔ format commit`, `⚠ rules 16h` | Setiap refresh |
 | Ringkasan ambang di system prompt | Section `venturo-kinerja-hud:rules` (±8 baris; angka dibaca dari `rules/quality-score/*.md`) | Setiap request model di repo yang aktif. Rule tidak perlu ditulis di CLAUDE.md, jadi tidak membebani batas 200 baris `agent-docs` |
 | Penahan push/PR | `git push` / `gh pr create` ditolak bila gate commit gagal (PR tidak akan dinilai). `git push` ditolak bila PR sudah di-approve (PR lock). Bila masih ada pelanggaran, push diperingatkan **sekali** per keadaan diff: Claude diminta bertanya ke user, dan perintah yang sama diloloskan di percobaan berikutnya | Sebelum perintah jalan. Fail-open: error di hook ini tidak pernah memblokir |
-| `/kinerja` | Laporan lengkap: ringkasan, gate gagal, sampai 8 pelanggaran. `/kinerja hide` dan `/kinerja show` mengatur band | Kapan saja |
+| Panel samping **Kinerja** | Prediksi per dimensi, stack, gate gagal, sampai 12 pelanggaran, tombol **Hitung ulang** | Dibuka otomatis bila sesi digambar di desktop app / VS Code / ponsel (surface jarak jauh tidak selalu menggambar band). Di terminal: `/kinerja panel` |
+| `/kinerja` | Laporan lengkap: ringkasan, gate gagal, sampai 8 pelanggaran. `/kinerja hide` menyembunyikan band penuh, `/kinerja show` menampilkannya lagi, `/kinerja panel` membuka panel, `/kinerja debug` menampilkan diagnostik | Kapan saja |
 
 Dimensi bug tampil `–` sampai skill `venturo-kinerja-precheck` dijalankan (bug tidak bisa diprediksi
 secara statis). Setelah precheck, `kinerja_status.py` memakai `last-precheck.json` selama HEAD dan diff
@@ -49,6 +50,13 @@ Daftar di atas hanya dipakai sebelum status pertama selesai dihitung. Sesudahnya
 dari `kinerja_status`, yang juga memindai subfolder monorepo (`apps/*`, `packages/*`, `services/*`, …).
 Jadi monorepo tanpa manifest di root tetap aktif, dan bila `kinerja_status` melaporkan `stacks: []`,
 band disembunyikan. `/kinerja` selalu menjelaskan kenapa mod tidak aktif.
+
+## Diagnostik
+
+`/kinerja debug` dan file `.claude/venturo-kinerja/hud-debug.json` di repo (di-ignore git) mencatat
+surface yang terpasang (`terminal`, `desktop`, `vscode`, `mobile`), komponen yang diminta surface untuk
+digambar (`AbovePrompt@terminal`, `Pane@desktop`, …), dan status panel. Bila mod terlihat tidak muncul,
+isi file ini menunjukkan apakah mod termuat dan apakah host meminta gambarnya.
 
 ## Menemukan plugin venturo-kinerja
 

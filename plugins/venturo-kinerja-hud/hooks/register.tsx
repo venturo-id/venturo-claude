@@ -10,6 +10,7 @@ import {
   isGitPush,
   isPushCommand,
   detectStacks,
+  dimensionText,
   isWatchedFile,
   newViolations,
   parsePerFinding,
@@ -28,6 +29,7 @@ import {
 const PLUGIN = 'venturo-kinerja-hud'
 const status = atom({ plugin: 'venturo-kinerja-hud', key: 'status' } as const, null)
 const isHidden = atom({ plugin: 'venturo-kinerja-hud', key: 'isHidden' } as const, false)
+const isCompact = atom({ plugin: 'venturo-kinerja-hud', key: 'isCompact' } as const, false)
 const isExpanded = atom({ plugin: 'venturo-kinerja-hud', key: 'isExpanded' } as const, false)
 
 const STATUS_TIMEOUT_MS = 20_000
@@ -44,6 +46,10 @@ const REPORT_LIMIT = 8
 const BAND_LIMIT = 5
 const PUSH_WARNING_LIMIT = 5
 const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit'])
+const PANE_ID = 'kinerja'
+const PANE_TITLE = 'Kinerja'
+const PANE_LIMIT = 12
+const STATE_DIR = '.claude/venturo-kinerja'
 
 // State sesi modul; register dijalankan ulang (dan state ini mulai dari awal) setiap reload.
 const hud = {
@@ -62,6 +68,85 @@ const hud = {
   // Stack dari manifest root sampai kinerja_status pertama selesai; sesudahnya
   // `stacks` laporan status (termasuk subfolder monorepo) yang jadi acuan.
   hasStack: false,
+  // Diagnostik: apa yang diminta surface dari mod ini (ditulis ke hud-debug.json).
+  debug: {
+    surfaces: [] as string[],
+    renders: {} as Record<string, number>,
+    pane: 'belum dibuka',
+    startedAt: '',
+  },
+}
+
+// Surface selain terminal (desktop app, VS Code, mobile) menggambar lewat jalur
+// jarak jauh; tidak semua host menggambar band AbovePrompt, sedangkan Pane
+// digambar di setiap surface. Pane dibuka otomatis hanya untuk surface itu.
+function isRemoteSurface(surface: string): boolean {
+  return surface !== 'terminal'
+}
+
+async function writeDebug($: EngineInterface): Promise<void> {
+  if (hud.cwd === '') {
+    return
+  }
+  const dir = `${hud.cwd}/${STATE_DIR}`
+  if (!(await $.fs.exists(`${dir}/.gitignore`))) {
+    await $.fs.write(`${dir}/.gitignore`, '*\n')
+  }
+  const snapshot = {
+    startedAt: hud.debug.startedAt,
+    cwd: hud.cwd,
+    kinerjaRoot: hud.kinerjaRoot ?? null,
+    isActive: hud.isActive,
+    hasStack: hud.hasStack,
+    surfaces: hud.debug.surfaces,
+    renders: hud.debug.renders,
+    pane: hud.debug.pane,
+  }
+  await $.fs.write(`${dir}/hud-debug.json`, `${JSON.stringify(snapshot, null, 2)}\n`)
+}
+
+function writeDebugInBackground($: EngineInterface): void {
+  writeDebug($).catch(() => undefined)
+}
+
+/** Catat permintaan render pertama per komponen+surface (dan hitung sisanya). */
+function noteRender($: EngineInterface, component: string, surface: string): void {
+  const key = `${component}@${surface}`
+  const seen = hud.debug.renders[key] ?? 0
+  hud.debug.renders[key] = seen + 1
+  if (seen === 0) {
+    writeDebugInBackground($)
+  }
+}
+
+async function openPane($: EngineInterface): Promise<string> {
+  const opened = await $.ui.open({ id: PANE_ID, title: PANE_TITLE })
+  hud.debug.pane = opened.isPlaced ? 'terbuka' : `belum tergambar: ${opened.reason}`
+  writeDebugInBackground($)
+  return hud.debug.pane
+}
+
+async function openPaneForRemoteSurfaces($: EngineInterface): Promise<void> {
+  const surfaces = await $.session.surfaces()
+  hud.debug.surfaces = [...surfaces]
+  if (surfaces.some(isRemoteSurface)) {
+    await openPane($)
+  } else {
+    writeDebugInBackground($)
+  }
+}
+
+function debugText(): string {
+  return [
+    'HUD Kinerja — diagnostik',
+    `  cwd: ${hud.cwd}`,
+    `  plugin venturo-kinerja: ${hud.kinerjaRoot ?? 'tidak ditemukan'}`,
+    `  aktif: ${hud.isActive} · stack dikenali: ${hud.hasStack}`,
+    `  surface terpasang: ${hud.debug.surfaces.join(', ') || '(belum ada)'}`,
+    `  render diminta: ${Object.entries(hud.debug.renders).map(([k, n]) => `${k}×${n}`).join(', ') || '(belum ada)'}`,
+    `  panel: ${hud.debug.pane}`,
+    `  file: ${hud.cwd}/${STATE_DIR}/hud-debug.json`,
+  ].join('\n')
 }
 
 async function findKinerjaRoot($: EngineInterface): Promise<string | undefined> {
@@ -221,9 +306,10 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const started = await next(e)
     hud.cwd = e.cwd
+    hud.debug.startedAt = new Date(await $.clock.now()).toISOString()
     await $.command.register({
       name: 'kinerja',
-      description: 'Prediksi skor Kinerja + pelanggaran diff ini (args: show | hide)',
+      description: 'Prediksi skor Kinerja + pelanggaran diff ini (args: show | hide | panel | debug)',
     })
     hud.kinerjaRoot = await findKinerjaRoot($)
     hud.isActive = hud.kinerjaRoot !== undefined && (await $.fs.exists(`${hud.cwd}/.git`))
@@ -233,14 +319,42 @@ export const register: Register = on => {
       refreshInBackground($)
       $.clock.every(POLL_MS, () => pollInBackground($))
     }
+    if (hud.isActive && hud.hasStack) {
+      await openPaneForRemoteSurfaces($).catch(() => undefined)
+    }
     return started
+  })
+
+  // Desktop app / VS Code / ponsel yang menyambung setelah sesi mulai.
+  on('session.attach', async ($, e, next) => {
+    const attached = await next(e)
+    if (!hud.debug.surfaces.includes(e.surface)) {
+      hud.debug.surfaces = [...hud.debug.surfaces, e.surface]
+    }
+    if (hud.isActive && hud.hasStack && isRemoteSurface(e.surface)) {
+      await openPane($).catch(() => undefined)
+    }
+    return attached
   })
 
   on('command.run', { command: 'kinerja' }, async ($, e) => {
     const arg = e.args.trim()
-    if (arg === 'hide' || arg === 'show') {
-      await update($, isHidden, () => arg === 'hide')
-      return { text: arg === 'hide' ? 'HUD Kinerja disembunyikan.' : 'HUD Kinerja ditampilkan.' }
+    if (arg === 'hide') {
+      await update($, isHidden, () => true)
+      return { text: 'Band Kinerja disembunyikan penuh. Ketik /kinerja show untuk menampilkannya lagi.' }
+    }
+    if (arg === 'show') {
+      await update($, isHidden, () => false)
+      await update($, isCompact, () => false)
+      return { text: 'Band Kinerja ditampilkan.' }
+    }
+    if (arg === 'debug') {
+      hud.debug.surfaces = [...(await $.session.surfaces())]
+      await writeDebug($).catch(() => undefined)
+      return { text: debugText() }
+    }
+    if (arg === 'panel') {
+      return { text: `Panel Kinerja: ${await openPane($)}` }
     }
     if (hud.kinerjaRoot === undefined) {
       return { text: 'HUD Kinerja: plugin venturo-kinerja tidak ditemukan. Pasang venturo-kinerja@venturo-tools atau set VENTURO_KINERJA_ROOT.' }
@@ -319,11 +433,20 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    noteRender($, 'AbovePrompt', e.surface)
     const current = await read($, status)
     if (!hud.isActive || !hud.hasStack || current === null || e.props.hasSurvey || (await read($, isHidden))) {
       return next(e)
     }
     const { Box, Button, Text } = $.ui.resolve(e)
+    if (await read($, isCompact)) {
+      return (
+        <Box>
+          <Text dimColor>{statusLineText(current)} </Text>
+          <Button key="show" label="Tampilkan" onPress={() => update($, isCompact, () => false)} />
+        </Box>
+      )
+    }
     const expanded = await read($, isExpanded)
     const isBlocked = current.status === 'blocked'
     const color = current.error !== null ? 'subtle' : isBlocked ? 'error' : current.violations.length > 0 ? 'warning' : 'success'
@@ -343,7 +466,7 @@ export const register: Register = on => {
               onPress={() => update($, isExpanded, value => !value)}
             />
           )}
-          <Button key="hide" label="Sembunyikan" onPress={() => update($, isHidden, () => true)} />
+          <Button key="compact" label="Ringkas" onPress={() => update($, isCompact, () => true)} />
         </Box>
         {expanded &&
           gates.slice(0, room).map(gate => (
@@ -355,6 +478,39 @@ export const register: Register = on => {
           current.violations.slice(0, Math.max(0, room - gates.length)).map(v => (
             <Text dimColor>{violationLine(v)}</Text>
           ))}
+      </Box>
+    )
+  })
+
+  on('ui.render', { component: 'Pane', requestId: PANE_ID }, async ($, e) => {
+    noteRender($, 'Pane', e.surface)
+    const { Box, Button, Text } = $.ui.resolve(e)
+    const current = await read($, status)
+    if (current === null) {
+      return <Text dimColor>Menghitung prediksi skor Kinerja…</Text>
+    }
+    const gates = failedGates(current)
+    const room = Math.max(1, (e.viewport?.rows ?? 30) - 8)
+    return (
+      <Box flexDirection="column">
+        <Text bold>{current.error === null ? `Prediksi ${current.final === null ? '–' : `≈${current.final}`}` : current.error}</Text>
+        {current.dimensions.map(dim => (
+          <Text>{dimensionText(dim)}</Text>
+        ))}
+        {current.stacks !== null && current.stacks.length > 0 && <Text dimColor>stack: {current.stacks.join(', ')}</Text>}
+        {gates.map(gate => (
+          <Text color="error">
+            gate {gate.id}: {gate.detail}
+          </Text>
+        ))}
+        {current.violations.length === 0 && gates.length === 0 && <Text color="success">Tidak ada pelanggaran statis.</Text>}
+        {current.violations.slice(0, Math.min(PANE_LIMIT, room)).map(v => (
+          <Text dimColor>{violationLine(v)}</Text>
+        ))}
+        {current.violations.length > Math.min(PANE_LIMIT, room) && (
+          <Text dimColor>… {current.violations.length - Math.min(PANE_LIMIT, room)} pelanggaran lain (/kinerja)</Text>
+        )}
+        <Button key="refresh" label="Hitung ulang" onPress={() => refreshInBackground($)} />
       </Box>
     )
   })

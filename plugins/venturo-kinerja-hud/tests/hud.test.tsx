@@ -77,10 +77,15 @@ const BAND = {
   },
 } as const
 
-type World = { status: () => string; diff?: () => string; rootNames?: string[]; ghApproved?: boolean }
+type World = { status: () => string; diff?: () => string; rootNames?: string[]; ghApproved?: boolean; surfaces?: string[] }
 
 // Dunia di bawah plugin: plugin venturo-kinerja bersebelahan via env, repo Go, status dari `world`.
-function stubWorld(on: On, world: World): { toasts: string[]; runs: string[][]; clock: ReturnType<typeof mock.clock> } {
+function stubWorld(
+  on: On,
+  world: World,
+): { toasts: string[]; runs: string[][]; clock: ReturnType<typeof mock.clock>; opened: string[]; writes: Record<string, string> } {
+  const opened: string[] = []
+  const writes: Record<string, string> = {}
   const toasts: string[] = []
   const runs: string[][] = []
   mock.env(on, { VENTURO_KINERJA_ROOT: KINERJA, HOME: '/home/dev' })
@@ -122,8 +127,17 @@ function stubWorld(on: On, world: World): { toasts: string[]; runs: string[][]; 
     return { value: undefined }
   })
   on('ui.status', () => ({ value: undefined }))
+  on('session.surfaces', () => ({ value: (world.surfaces ?? ['terminal']) as Array<'terminal' | 'desktop' | 'vscode' | 'mobile'> }))
+  on('ui.open', (_, e) => {
+    opened.push(e.id)
+    return { value: { isPlaced: true as const } }
+  })
+  on('fs.write', (_, e) => {
+    writes[e.path] = e.text
+    return { value: undefined }
+  })
   on('tool.call', () => ({ result: {} }))
-  return { toasts, runs, clock }
+  return { toasts, runs, clock, opened, writes }
 }
 
 describe('lib', () => {
@@ -321,5 +335,53 @@ describe('mod', () => {
     const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
     expect((await ui.find({ type: 'Text', text: /engine/ }))?.text).toBe('engine')
     await ui.unmount()
+  })
+
+  test('Ringkas: band jadi satu baris dengan tombol Tampilkan, lalu kembali penuh', async ($, on) => {
+    stubWorld(on, { status: () => statusJson({ violations: [LONG_FUNC], final: 87 }) })
+    await $.session.start({ cwd: REPO, surface: 'terminal', isInteractive: true })
+    await $.command.run(KINERJA_COMMAND)
+    const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+    await ui.press({ key: 'compact' })
+    expect((await ui.find({ type: 'Text', text: /kinerja ≈87/ }))?.text).toBe('kinerja ≈87 ')
+    expect(await ui.find({ key: 'show' })).toBeDefined()
+    await ui.press({ key: 'show' })
+    expect(await ui.find({ type: 'Text', text: /Kinerja ≈87 · Bug/ })).toBeDefined()
+    await ui.unmount()
+  })
+
+  test('/kinerja hide memberi tahu cara menampilkan lagi', async ($, on) => {
+    stubWorld(on, { status: statusJson })
+    await $.session.start({ cwd: REPO, surface: 'terminal', isInteractive: true })
+    const hidden = await $.command.run({ ...KINERJA_COMMAND, args: 'hide' })
+    expect(hidden.text).toContain('/kinerja show')
+  })
+
+  test('surface desktop: panel Kinerja dibuka otomatis dan digambar', async ($, on) => {
+    const world = stubWorld(on, { status: () => statusJson({ violations: [LONG_FUNC], final: 87 }), surfaces: ['desktop'] })
+    await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
+    await $.command.run(KINERJA_COMMAND)
+    expect(world.opened).toContain('kinerja')
+    const pane = await $.ui.mount({
+      plugin: 'venturo-kinerja-hud',
+      component: 'Pane',
+      requestId: 'kinerja',
+      surface: 'desktop',
+      props: { title: 'Kinerja', isFocused: false, bodyColumns: 50, placement: 'dock', scroll: { offset: 0, bodyRows: 30 }, view: {} },
+    })
+    expect((await pane.find({ type: 'Text', text: /Prediksi/ }))?.text).toBe('Prediksi ≈87')
+    expect(await pane.find({ type: 'Text', text: /oversized-function UserService.Create/ })).toBeDefined()
+    await pane.unmount()
+    const debug = world.writes[`${REPO}/.claude/venturo-kinerja/hud-debug.json`]
+    expect(debug).toContain('"Pane@desktop": 1')
+  })
+
+  test('surface terminal: panel tidak dibuka otomatis; /kinerja debug melaporkan keadaan', async ($, on) => {
+    const world = stubWorld(on, { status: statusJson })
+    await $.session.start({ cwd: REPO, surface: 'terminal', isInteractive: true })
+    expect(world.opened).toHaveLength(0)
+    const debug = await $.command.run({ ...KINERJA_COMMAND, args: 'debug' })
+    expect(debug.text).toContain('surface terpasang: terminal')
+    expect(world.writes[`${REPO}/.claude/venturo-kinerja/.gitignore`]).toBe('*\n')
   })
 })

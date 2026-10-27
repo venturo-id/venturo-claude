@@ -46,6 +46,7 @@ declare module 'claude-code' {
     'venturo-kinerja-hud': {
       status: HudStatus | null
       isHidden: boolean
+      isCompact: boolean
       isExpanded: boolean
     }
   }
