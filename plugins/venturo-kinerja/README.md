@@ -1,5 +1,7 @@
 # venturo-kinerja
 
+> 📘 **Panduan engineer** (instalasi, mode, cara membaca HUD, kasus penggunaan, checklist sebelum PR): [`docs/PANDUAN-ENGINEER.md`](docs/PANDUAN-ENGINEER.md)
+
 Plugin ini membuat sesi vibe coding memakai aturan dan rumus yang **sama** dengan AI
 code review di [kinerja.venturo.id](https://kinerja.venturo.id). Tujuannya kualitas kode
 nyata yang lolos review di run pertama, bukan mengakali reviewer: plugin tidak pernah menulis

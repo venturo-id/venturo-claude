@@ -1,5 +1,7 @@
 # venturo-kinerja-hud
 
+> 📘 **Panduan engineer** (instalasi, mode, cara membaca HUD, kasus penggunaan, checklist sebelum PR): [`../venturo-kinerja/docs/PANDUAN-ENGINEER.md`](../venturo-kinerja/docs/PANDUAN-ENGINEER.md)
+
 Mod Claude Code yang menampilkan **prediksi skor code review Kinerja** di sesi vibe coding.
 Data diambil dari `kinerja_status.py` milik plugin [`venturo-kinerja`](../venturo-kinerja), sehingga
 angkanya sama dengan `/precheck` dan mesin skor kinerja-be. Tidak memakai LLM dan tidak mengakses jaringan,
@@ -31,6 +33,10 @@ kecuali `gh pr view` saat push.
 Dimensi bug tampil `–` sampai skill `venturo-kinerja-precheck` dijalankan (bug tidak bisa diprediksi
 secara statis). Setelah precheck, `kinerja_status.py` memakai `last-precheck.json` selama HEAD dan diff
 masih sama.
+
+## Mode
+
+Mod mengikuti mode dari `kinerja_status` (`enforce` / `advisory` / `off`, lihat README `venturo-kinerja`). **advisory** (default repo non-Venturo): band berlabel `Kinerja (saran)`, push tidak pernah ditahan, dan section prompt tidak memaksa format commit. **off**: band, panel, section prompt, dan penahan push tidak aktif. `/kinerja` menampilkan mode dan sumbernya.
 
 ## Kapan mod aktif
 
