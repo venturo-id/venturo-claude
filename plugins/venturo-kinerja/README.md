@@ -282,6 +282,8 @@ per bahasa ada di `tests/lang_fixtures.py`.
 
 ## Sync ulang rules (manual, sampai KJ-G)
 
+> Rencana sinkronisasi otomatis dengan kinerja-be (export context, golden vector, dispatch, GitHub Action, cek paritas): [`docs/HANDOFF-SINKRONISASI.md`](docs/HANDOFF-SINKRONISASI.md).
+
 1. Buka `https://kinerja.venturo.id/context`; expand baris ber-`(n)` (`php`, `quality-score`).
    Setelah expand ada 27 baris; `security` dan `workflow` pindah ke halaman 2.
 2. Tiap slug: **⋮ → Edit**. Textarea berisi konten mentah versi aktif (dialog Detail hanya
