@@ -418,6 +418,103 @@ def _required_doc(path, stacks):
     return None
 
 
+# --- mode kepatuhan ----------------------------------------------------------
+# enforce = aturan Kinerja dipaksakan (hook boleh menolak/memaksa Claude);
+# advisory = hanya estimasi & saran; off = plugin diam. Repo non-Venturo
+# (pribadi/open source) default advisory supaya format commit dan pengingat
+# Kinerja tidak dipaksakan di sana.
+
+MODES = ("enforce", "advisory", "off")
+MODE_ENV = "VENTURO_KINERJA_MODE"
+MODE_MARKER = os.path.join(".claude", "venturo-kinerja.json")
+_VENTURO_REMOTE_RE = re.compile(
+    r"^(?:(?:https?|git\+https?)://(?:[^@/]+@)?github\.com/|(?:ssh|git\+ssh)://(?:[^@/]+@)?github\.com[:/]"
+    r"|[^@/\s]+@github\.com:|github\.com[:/])venturo-id/", re.I)
+
+
+def is_venturo_remote(url):
+    """URL remote mengarah ke org GitHub venturo-id (https, https+kredensial, ssh, scp-like)."""
+    return bool(_VENTURO_REMOTE_RE.match(url.strip()))
+
+
+def mask_url(url):
+    """Sembunyikan kredensial di URL remote (token PAT tidak boleh tercetak)."""
+    return re.sub(r"^([a-z+]+://)[^@/]+@", r"\1***@", url.strip())
+
+
+def _git_out(repo, *args):
+    try:
+        proc = subprocess.run(["git", "-C", repo] + list(args), capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return proc.stdout if proc.returncode == 0 else ""
+
+
+def _mode_from_marker(repo):
+    path = os.path.join(repo, MODE_MARKER)
+    if not os.path.isfile(path):
+        return None, None
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, ValueError):
+        return "", "%s bukan JSON yang valid" % MODE_MARKER
+    value = data.get("mode") if isinstance(data, dict) else None
+    return (value if isinstance(value, str) else ""), MODE_MARKER
+
+
+def _venturo_remote(repo):
+    for line in _git_out(repo, "remote", "-v").splitlines():
+        parts = line.split()
+        if len(parts) >= 2 and is_venturo_remote(parts[1]):
+            return "%s → %s" % (parts[0], mask_url(parts[1]))
+    return None
+
+
+def resolve_mode(path):
+    """Mode kepatuhan untuk repo yang memuat path.
+
+    Urutan (yang pertama valid dipakai): env VENTURO_KINERJA_MODE → `git config kinerja.mode`
+    (repo lalu global) → `.claude/venturo-kinerja.json` {"mode": ...} → remote org venturo-id
+    (enforce) → default advisory. Nilai tak dikenal: sumber itu diabaikan + warning.
+    Kembali {value, source, detail, warnings}.
+    """
+    repo = repo_root(path)
+    warnings = []
+
+    def pick(raw, source, detail):
+        value = (raw or "").strip().lower()
+        if value in MODES:
+            return {"value": value, "source": source, "detail": detail, "warnings": warnings}
+        warnings.append("mode %r dari %s tidak dikenal (pakai %s); sumber diabaikan"
+                        % (raw, detail, "/".join(MODES)))
+        return None
+
+    raw = os.environ.get(MODE_ENV)
+    if raw is not None and raw.strip():
+        found = pick(raw, "env", "%s=%s" % (MODE_ENV, raw.strip()))
+        if found:
+            return found
+    raw = _git_out(repo, "config", "--get", "kinerja.mode").strip()
+    if raw:
+        found = pick(raw, "git-config", "git config kinerja.mode=%s" % raw)
+        if found:
+            return found
+    raw, detail = _mode_from_marker(repo)
+    if detail and raw:
+        found = pick(raw, "marker", detail)
+        if found:
+            return found
+    elif detail:
+        warnings.append("%s: tidak ada \"mode\" yang valid; sumber diabaikan" % detail)
+    remote = _venturo_remote(repo)
+    if remote:
+        return {"value": "enforce", "source": "remote", "detail": "remote org venturo-id: " + remote,
+                "warnings": warnings}
+    return {"value": "advisory", "source": "default",
+            "detail": "bukan repo org venturo-id dan tidak ada setelan mode", "warnings": warnings}
+
+
 # --- repo & go-thresholds -------------------------------------------------
 
 def find_up(start, name):

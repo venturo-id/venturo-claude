@@ -1,6 +1,7 @@
 """Repo git sementara untuk test kinerja_status & hook.
 
-Branch `production` berisi modul Go kecil yang bersih + dokumen. Branch `feat`
+Branch `production` berisi modul Go kecil yang bersih + dokumen + penanda mode
+enforce (`.claude/venturo-kinerja.json`, seperti skeleton Venturo). Branch `feat`
 menambah fungsi panjang berparameter 6 di handler (tanpa update kontrak API),
 migration baru tanpa ERD, dan CLAUDE.md 210 baris tanpa bagian delegasi.
 """
@@ -34,6 +35,9 @@ func Ping(name string) string {
 """
 
 
+ENFORCE_MARKER = '{"mode": "enforce"}\n'
+
+
 def long_func(name="Export", params="a, b, c, d, e, f int"):
     body = "\n".join("\ttotal += a" for _ in range(52))
     return "\nfunc %s(%s) int {\n\ttotal := 0\n%s\n\treturn total\n}\n" % (name, params, body)
@@ -61,6 +65,7 @@ def make_repo():
     write(repo, "CHANGELOG.md", "# Changelog\n\n## [Unreleased]\n")
     write(repo, "docs/api-contract/core/user.md", "# User\n\n**Last Updated:** 2026-10-01\n")
     write(repo, "internal/modules/core/user/handler/user_handler.go", HANDLER)
+    write(repo, ".claude/venturo-kinerja.json", ENFORCE_MARKER)  # seperti skeleton Venturo
     git(repo, "add", "-A")
     git(repo, "commit", "-q", "-m", "chore: init [FX-1]")
     git(repo, "checkout", "-q", "-b", "feat")

@@ -4,6 +4,7 @@
     kinerja_status.py [--json] [--base REF] [--repo PATH]
     kinerja_status.py --record-precheck FINDINGS.json [--base REF] [--repo PATH]
     kinerja_status.py --stacks [--repo PATH]      # deteksi stack saja ([] = tidak aktif)
+    kinerja_status.py --mode [--repo PATH]        # mode kepatuhan saja (enforce|advisory|off)
 
 Diff = merge-base(BASE, HEAD)..working tree (staged, unstaged, dan file untracked).
 Output --json adalah KONTRAK yang dibaca mod HUD; skemanya didokumentasikan di
@@ -320,6 +321,21 @@ def doc_gates(repo, files, doc):
     return out
 
 
+SOFT_GATES = ("commit_format", "changelog")  # aturan proses Venturo, bukan kualitas kode
+
+
+def soften_gates(gates, mode):
+    """Mode advisory/off: gate proses Venturo hanya info — tidak membuat status "blocked"."""
+    if mode == "enforce":
+        return gates
+    label = "mode saran" if mode == "advisory" else "mode off"
+    for g in gates:
+        if g["id"] in SOFT_GATES:
+            g["effect"] = "info"
+            g["detail"] += " (%s: tidak diwajibkan)" % label
+    return gates
+
+
 def gates_for(repo, merge_base, files, lines, agent_viol, doc, rules):
     trivial = sim.is_trivial(lines, [f["path"] for f in files])
     return [commit_gate(repo, merge_base),
@@ -382,7 +398,8 @@ def build_status(repo, base=None, now=None):
         v["points_final"] = points_final(v, payload, cfg, len(agent_viol))
     violations.sort(key=lambda v: (-v["points_final"], v["file"], v["line"] or 0))
     rules = lib.rules_info(now)
-    gates = gates_for(repo, merge_base, files, lines, agent_viol, doc, rules)
+    mode = lib.resolve_mode(repo)
+    gates = soften_gates(gates_for(repo, merge_base, files, lines, agent_viol, doc, rules), mode["value"])
     predicted = predicted_block(out, payload, precheck)
     # Gate commit gagal = review ditolak (unscored). Angka final tetap ditampilkan
     # sebagai "skor bila gate diperbaiki", tapi statusnya harus jujur.
@@ -394,6 +411,7 @@ def build_status(repo, base=None, now=None):
         "schema_version": SCHEMA_VERSION,
         "generated_at": (now or _dt.datetime.now(_dt.timezone.utc)).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "repo": repo, "base": {"ref": ref, "merge_base": merge_base}, "head": head, "diff_hash": dhash,
+        "mode": {k: mode[k] for k in ("value", "source", "detail")},
         "changed": changed_summary(repo, files, lines),
         "stacks": stacks,
         "analyzers": analyzers,
@@ -403,7 +421,7 @@ def build_status(repo, base=None, now=None):
         "precheck": precheck_info,
         "rules": rules,
         "config": out["config"],
-        "warnings": warnings + out["warnings"],
+        "warnings": warnings + mode["warnings"] + out["warnings"],
     }
 
 
@@ -441,6 +459,11 @@ def format_text(st):
     p = st["predicted"]
     lines = ["kinerja status — base %s (%s), %d file / %d baris berubah"
              % (st["base"]["ref"], st["base"]["merge_base"][:8], st["changed"]["files"], st["changed"]["lines"])]
+    mode = st["mode"]
+    lines.append({"enforce": "Mode enforce (%s): aturan Kinerja berlaku penuh",
+                  "advisory": "Mode saran (%s): estimasi, tidak diwajibkan",
+                  "off": "Mode off (%s): plugin nonaktif di repo ini; status dijalankan manual"}[mode["value"]]
+                 % mode["source"])
     stacks = ", ".join("%s%s%s" % (s["id"], "/" + s["framework"] if s.get("framework") else "",
                                    "" if s["path"] == "." else " @" + s["path"]) for s in st["stacks"])
     analyzers = ", ".join("%s=%s" % kv for kv in sorted(st["analyzers"].items()))
@@ -474,9 +497,15 @@ def main(argv=None):
     ap.add_argument("--base", help="ref base PR (default: origin/HEAD, lalu production/main/...)")
     ap.add_argument("--repo", default=".", help="path repo (default: direktori kerja)")
     ap.add_argument("--record-precheck", metavar="FILE", help="simpan temuan precheck untuk diff ini")
+    ap.add_argument("--mode", action="store_true",
+                    help="hanya resolusi mode kepatuhan (JSON {value, source, detail, warnings})")
     ap.add_argument("--stacks", action="store_true",
                     help="hanya deteksi stack repo (JSON list, murah; [] = plugin tidak aktif di repo ini)")
     args = ap.parse_args(argv)
+    if args.mode:
+        mode = lib.resolve_mode(os.path.abspath(args.repo))
+        print(json.dumps(mode, ensure_ascii=False))
+        return 0
     if args.stacks:
         print(json.dumps(lib.supported_repo(os.path.abspath(args.repo)), ensure_ascii=False))
         return 0

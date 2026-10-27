@@ -1,7 +1,9 @@
 """Bersama untuk hook venturo-kinerja: baca event, cari repo, impor scripts/.
 
-Prinsip semua hook: gagal = diam (exit 0). Hook hanya bersuara bila yakin,
-dan hanya di repo yang stack-nya dikenali (lihat kinerja_lib.detect_stacks).
+Prinsip semua hook: gagal = diam (exit 0). Hook hanya bersuara bila yakin, hanya
+di repo yang stack-nya dikenali (kinerja_lib.detect_stacks), dan hanya di mode
+enforce (kinerja_lib.resolve_mode) — advisory/off tidak pernah memblokir atau
+memaksa Claude.
 """
 
 import json
@@ -29,6 +31,12 @@ def project_dir(event):
 def supported(path, event=None):
     """Stack yang dikenali di repo yang memuat path; [] = hook diam."""
     return lib.supported_repo(path, project_dir(event) if event is not None else None)
+
+
+def enforced(path, event=None):
+    """True hanya di mode enforce (lihat kinerja_lib.resolve_mode); advisory/off = hook diam."""
+    root = lib.repo_root(path, project_dir(event) if event is not None else None)
+    return lib.resolve_mode(root)["value"] == "enforce"
 
 
 def git_root(path):

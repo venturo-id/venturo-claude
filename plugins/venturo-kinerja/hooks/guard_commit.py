@@ -9,7 +9,7 @@ dilewati: hook tidak menebak pesan yang tidak bisa dipastikan.
 import re
 import shlex
 
-from _common import block, guarded, lib, project_dir, supported
+from _common import block, enforced, guarded, lib, project_dir, supported
 
 GIT_COMMIT_RE = re.compile(r"(?:^|[;&|(]|\s)git((?:\s+-[Cc]\s+\S+)*)\s+commit\b")
 HEREDOC_RE = re.compile(r"""-m\s+"\$\(cat\s+<<-?\s*['"]?(\w+)['"]?\s*\n(.*?)\n\s*\1\s*\n?\s*\)\"""", re.S)
@@ -72,7 +72,8 @@ def repo_dir(command, cwd):
 
 def main(event):
     command = (event.get("tool_input") or {}).get("command") or ""
-    if "commit" not in command or not supported(repo_dir(command, project_dir(event)), event):
+    repo = repo_dir(command, project_dir(event))
+    if "commit" not in command or not supported(repo, event) or not enforced(repo, event):
         return
     message = commit_message(command)
     if message is None:

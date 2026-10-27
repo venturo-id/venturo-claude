@@ -13,6 +13,16 @@ menjadikannya temuan.
 Path script: `${CLAUDE_PLUGIN_ROOT}/scripts/`. Di dev checkout tanpa `CLAUDE_PLUGIN_ROOT`,
 resolve relatif dari folder plugin ini (dua tingkat di atas file ini).
 
+## Mode kepatuhan — cek dulu
+
+`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/kinerja_status.py" --mode` → `{"value": ...}`.
+
+- `enforce` (repo org venturo-id / skeleton Venturo): ikuti semua aturan di bawah, termasuk gate.
+- `advisory` (default repo pribadi/open source): aturan kualitas kode di bawah hanya **saran**;
+  format commit `[KODE-n]`, CHANGELOG, dan gate proses Venturo **tidak wajib** — jangan memaksa
+  engineer. Sebutkan bahwa skor adalah estimasi.
+- `off`: jangan terapkan apa pun dari skill ini; cukup katakan bahwa plugin dimatikan di repo ini.
+
 ## Sebelum menulis kode
 
 1. Muat skill stack yang cocok:

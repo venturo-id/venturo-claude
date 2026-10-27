@@ -10,6 +10,10 @@ atau mengubah PR di GitHub — engineer yang melakukannya.
 
 Path script: `${CLAUDE_PLUGIN_ROOT}/scripts/` (dev checkout: dua tingkat di atas file ini).
 
+Cek mode dulu: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/kinerja_status.py" --mode` → `{"value": ...}`. `advisory` → deskripsi PR tetap boleh disusun,
+tetapi format commit `type(scope): … [KODE-n]` dan status issue Space **tidak wajib**; jangan
+menyarankan rebase/amend demi gate Kinerja. `off` → sampaikan bahwa plugin dimatikan di repo ini.
+
 ## Langkah
 
 1. **Gate.** `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/kinerja_status.py" --base <BASE> --json`.

@@ -8,7 +8,7 @@ menjelaskan ke engineer kenapa tidak perlu.
 
 import os
 
-from _common import emit, guarded, lib, project_dir, supported
+from _common import emit, enforced, guarded, lib, project_dir, supported
 
 import kinerja_status as ks
 
@@ -45,7 +45,7 @@ def main(event):
     if event.get("stop_hook_active"):
         return
     cwd = project_dir(event)
-    if not supported(cwd, event):
+    if not supported(cwd, event) or not enforced(cwd, event):
         return
     try:
         repo = ks.git(cwd, "rev-parse", "--show-toplevel").strip()

@@ -4,11 +4,12 @@ Rules basi = plugin bisa menilai dengan aturan yang sudah diganti reviewer
 kinerja. Diam bila stack repo tidak dikenali atau rules masih segar.
 """
 
-from _common import emit, guarded, lib, project_dir, supported
+from _common import emit, enforced, guarded, lib, project_dir, supported
 
 
 def main(event):
-    if not supported(project_dir(event), event):
+    cwd = project_dir(event)
+    if not supported(cwd, event) or not enforced(cwd, event):
         return
     info = lib.rules_info()
     if not info["stale"]:

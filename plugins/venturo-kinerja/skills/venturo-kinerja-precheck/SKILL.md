@@ -13,6 +13,11 @@ jujur lebih berguna daripada angka tinggi yang meleset.
 Path script: `${CLAUDE_PLUGIN_ROOT}/scripts/` (dev checkout: dua tingkat di atas file ini).
 `<BASE>` = branch tujuan PR (tanya engineer bila tidak jelas; default deteksi otomatis).
 
+Cek mode dulu: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/kinerja_status.py" --mode` → `{"value": ...}`.
+`advisory` → precheck tetap boleh dijalankan, tetapi laporkan sebagai **mode saran**: skor
+adalah estimasi dan gate commit/CHANGELOG tidak wajib. `off` → sampaikan bahwa plugin
+dimatikan di repo ini dan jalankan hanya bila engineer tetap memintanya.
+
 ## Langkah
 
 1. **Status statis.** Jalankan

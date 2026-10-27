@@ -8,6 +8,12 @@ RULES_DIR = os.path.join(PLUGIN_DIR, "rules")
 if SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, SCRIPTS_DIR)
 
+# Isolasi dari setelan pengembang: mode kepatuhan tidak boleh bocor dari env
+# atau `git config --global kinerja.mode` ke test (hook subprocess ikut mewarisi).
+os.environ.pop("VENTURO_KINERJA_MODE", None)
+os.environ["GIT_CONFIG_GLOBAL"] = os.devnull
+os.environ["GIT_CONFIG_NOSYSTEM"] = "1"
+
 import simulate_score  # noqa: E402  (setelah sys.path disiapkan)
 
 

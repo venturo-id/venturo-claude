@@ -258,6 +258,10 @@ class TestStacksCli(TmpDir):
 
 class TestHooksNonGo(TmpDir):
 
+    def setUp(self):
+        super().setUp()
+        fx.write(self.dir, ".claude/venturo-kinerja.json", fx.ENFORCE_MARKER)  # hook hanya memaksa di enforce
+
     def hook(self, name, event):
         proc = subprocess.run(["/bin/bash", HOOK, name], input=json.dumps(event), capture_output=True, text=True,
                               timeout=60)

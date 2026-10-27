@@ -15,7 +15,7 @@ import difflib
 import os
 import subprocess
 
-from _common import block, git_root, guarded, lib, project_dir, supported
+from _common import block, enforced, git_root, guarded, lib, project_dir, supported
 
 import thresholds as thr
 
@@ -119,7 +119,7 @@ def runtime_ready(path):
 
 def main(event):
     path = _abs_path(event)
-    if not path or not os.path.isfile(path) or not supported(path, event):
+    if not path or not os.path.isfile(path) or not supported(path, event) or not enforced(path, event):
         return
     if thr.analyzable(path) and runtime_ready(path):
         code_feedback(event, path)

@@ -48,9 +48,56 @@ Prasyarat: `python3` dan `git`. Runtime tambahan hanya untuk analyzer presisi (l
 git config kinerja.base origin/production-simple
 ```
 
+## Mode
+
+Engineer Venturo juga bekerja di repo pribadi atau open source. Di sana aturan proses Kinerja
+(format commit `type(scope): … [KODE-n]`, CHANGELOG wajib, hook yang memaksa Claude) tidak
+boleh dipaksakan. Karena itu plugin punya tiga mode: `enforce`, `advisory`, `off`.
+
+**Penentuan mode** (yang pertama ada dan valid dipakai; sumbernya dicatat di `mode.source`):
+
+1. env `VENTURO_KINERJA_MODE` → `env`
+2. `git config --get kinerja.mode` (config repo, lalu global) → `git-config`
+3. file `.claude/venturo-kinerja.json` di akar repo, `{"mode": "enforce"}` (skeleton Venturo
+   membawa file ini) → `marker`
+4. ada remote yang mengarah ke org GitHub `venturo-id` (`https://github.com/venturo-id/…`,
+   HTTPS dengan kredensial, `git@github.com:venturo-id/…`, `ssh://…/venturo-id/…`) → `enforce`,
+   sumber `remote` (kredensial di URL disamarkan `***` di `detail`)
+5. selain itu → `advisory`, sumber `default`
+
+Nilai yang tidak dikenali (mis. `strict`, JSON rusak) membuat sumber itu diabaikan; resolusi
+lanjut ke sumber berikutnya dan menambah `warnings`.
+
+| Komponen | enforce | advisory | off |
+|---|---|---|---|
+| `kinerja_status.py` | seperti biasa | tetap menghitung prediksi dan pelanggaran; gate `commit_format` dan `changelog` dilaporkan dengan `effect: "info"`, jadi **tidak** membuat `status: "blocked"`; teks: "Mode saran: estimasi, tidak diwajibkan" | tetap bisa dijalankan manual (gate proses sama dengan advisory); field `mode` |
+| hook `guard_commit` | menolak format salah | dilewati | dilewati |
+| hook post-edit (ambang, CLAUDE.md) | exit 2 + umpan balik | diam (tidak memaksa Claude) | diam |
+| hook Stop doc-sync | block sekali per diff | dilewati | dilewati |
+| hook SessionStart rules basi | peringatan | dilewati | dilewati |
+| skill rules/precheck/pr | seperti biasa | precheck tetap boleh; disebut mode saran, gate commit tidak wajib | skill menyebut mode off bila dipanggil |
+
+Ganti mode:
+
+```bash
+git config kinerja.mode advisory          # repo ini saja
+git config --global kinerja.mode off      # semua repo yang tidak punya setelan lebih tinggi
+export VENTURO_KINERJA_MODE=enforce       # sesi/shell ini, mengalahkan semua sumber lain
+```
+
+File penanda di repo (di-commit, seperti di skeleton Venturo):
+
+```json
+{"mode": "enforce"}
+```
+
+Cek mode yang berlaku: `python3 plugins/venturo-kinerja/scripts/kinerja_status.py --mode`
+→ `{"value": "advisory", "source": "default", "detail": "…", "warnings": []}`.
+
 ## Hook
 
-Semua hook: diam bila stack repo tidak dikenali (`kinerja_status.py --stacks` = `[]`),
+Semua hook hanya bersuara di **mode enforce** (lihat Mode). Selain itu: diam bila stack repo
+tidak dikenali (`kinerja_status.py --stacks` = `[]`),
 dilewati (exit 0) bila `python3`/`git` atau runtime analyzer tidak ada, atau terjadi error tak
 terduga.
 
@@ -73,7 +120,8 @@ di skeleton react/next.js; build pertama go-thresholds ~1 detik, lalu di-cache d
 `$CLAUDE_PLUGIN_DATA/bin` atau `~/.cache/venturo-kinerja/bin`).
 
 Untuk cek aktif/tidaknya plugin di sebuah repo tanpa menghitung diff:
-`kinerja_status.py --stacks [--repo PATH]` → JSON list stack (`[]` = tidak aktif).
+`kinerja_status.py --stacks [--repo PATH]` → JSON list stack (`[]` = tidak aktif), dan
+`kinerja_status.py --mode [--repo PATH]` → mode kepatuhan.
 
 ```jsonc
 {
@@ -83,6 +131,9 @@ Untuk cek aktif/tidaknya plugin di sebuah repo tanpa menghitung diff:
   "base": {"ref": "origin/production-simple", "merge_base": "<sha>"},
   "head": "<sha>",
   "diff_hash": "sha256:<hex>",          // diff merge-base..working tree + file untracked
+  "mode": {"value": "enforce",          // enforce | advisory | off
+           "source": "marker",          // env | git-config | marker | remote | default
+           "detail": ".claude/venturo-kinerja.json"},
   "changed": {"files": 21, "lines": 1239, "go_files": 1,
               "by_language": {"go": 1}},          // + sejak multi-bahasa
   "stacks": [{"id": "react", "language": "typescript", "framework": "nextjs",
@@ -131,7 +182,9 @@ Untuk cek aktif/tidaknya plugin di sebuah repo tanpa menghitung diff:
   berisi temuan statis.
 - `gates[].id`: `commit_format` (unscored), `trivial_pr` (unscored), `agent_docs` (score),
   `doc_sync` (score), `changelog` (ci, hanya bila repo punya `CHANGELOG.md` dan kode berubah),
-  `rules_fresh` (info).
+  `rules_fresh` (info). Di mode advisory/off, `commit_format` dan `changelog` ber-`effect`
+  `info` (detail diberi akhiran "tidak diwajibkan"), sehingga `blocked_by` kosong.
+- `mode`: hasil resolusi mode (lihat Mode); peringatan sumber yang tidak valid masuk `warnings`.
 - Dimensi bug `null`/skipped kecuali `last-precheck.json` ada dan `head` + `diff_hash`-nya
   sama dengan saat ini. Precheck menyimpannya lewat
   `kinerja_status.py --record-precheck FILE` (format FILE: lihat skill precheck).
