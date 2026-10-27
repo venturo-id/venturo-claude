@@ -23,6 +23,8 @@ export type HudGate = {
   detail: string
 }
 
+export type HudMode = 'enforce' | 'advisory' | 'off'
+
 export type HudStatus = {
   final: number | null
   status: string
@@ -38,6 +40,9 @@ export type HudStatus = {
   diffHash: string
   // null bila kinerja_status versi lama belum melaporkan stack.
   stacks: string[] | null
+  // enforce bila kinerja_status versi lama belum melaporkan mode.
+  mode: HudMode
+  modeSource: string
   error: string | null
 }
 

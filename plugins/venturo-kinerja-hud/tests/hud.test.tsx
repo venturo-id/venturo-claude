@@ -232,6 +232,7 @@ describe('mod', () => {
     stubWorld(on, { status: statusJson })
     on('prompt.compose', () => ({ sections: [{ id: 'intro', text: 'intro', scope: 'shared' }] }))
     await $.session.start({ cwd: REPO, surface: 'terminal', isInteractive: true })
+    await $.command.run(KINERJA_COMMAND)
     const composed = await $.prompt.compose({
       model: 'claude-opus-5-5',
       promptModel: 'claude-opus-5-5',
@@ -414,6 +415,49 @@ describe('mod', () => {
     expect(world.opened).toContain('kinerja')
     const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
     expect(await ui.find({ type: 'Text', text: /Kinerja ≈87/ })).toBeDefined()
+    await ui.unmount()
+  })
+
+  const withMode = (json: string, value: string, source = 'default') =>
+    JSON.stringify({ ...JSON.parse(json), mode: { value, source } })
+
+  test('mode saran: band berlabel saran, push tidak pernah ditahan, prompt tidak memaksa format commit', async ($, on) => {
+    stubWorld(on, { status: () => withMode(statusJson({ violations: [LONG_FUNC], commitOk: false, final: 87 }), 'advisory') })
+    on('prompt.compose', () => ({ sections: [{ id: 'intro', text: 'intro', scope: 'shared' }] }))
+    await $.session.start({ cwd: REPO, surface: 'terminal', isInteractive: true })
+    const report = await $.command.run(KINERJA_COMMAND)
+    expect(report.text).toContain('mode: saran (estimasi saja, tidak ada yang diblokir) — dari default repo non-Venturo')
+    const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+    expect(await ui.find({ type: 'Text', text: /^Kinerja \(saran\) ≈87/ })).toBeDefined()
+    await ui.unmount()
+    const pushed = await $.tool.call({ tool: 'Bash', command: 'git push' })
+    expect(pushed.deny).toBeUndefined()
+    const composed = await $.prompt.compose({
+      model: 'claude-opus-5-5',
+      promptModel: 'claude-opus-5-5',
+      surfaces: ['terminal'],
+      tools: [],
+      outputStyle: null,
+      traits: [],
+    })
+    const section = composed.sections.find(one => one.id === 'venturo-kinerja-hud:rules')
+    expect(section?.text).toContain('TIDAK diwajibkan')
+    expect(section?.text).not.toContain('[KODE-123]')
+  })
+
+  test('mode off: band, panel, dan section prompt tidak ada; /kinerja menjelaskan cara menyalakan', async ($, on) => {
+    const world = stubWorld(on, { status: () => withMode(statusJson({ violations: [LONG_FUNC] }), 'off', 'git-config'), surfaces: ['desktop'] })
+    on('ui.render', ($, e) => {
+      const { Text } = $.ui.resolve(e)
+      return <Text>engine</Text>
+    })
+    await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
+    const report = await $.command.run(KINERJA_COMMAND)
+    expect(report.text).toContain('mode: mati — dari git config kinerja.mode')
+    expect(report.text).toContain('git config kinerja.mode enforce|advisory|off')
+    expect(world.opened).toHaveLength(0)
+    const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+    expect((await ui.find({ type: 'Text', text: /engine/ }))?.text).toBe('engine')
     await ui.unmount()
   })
 })

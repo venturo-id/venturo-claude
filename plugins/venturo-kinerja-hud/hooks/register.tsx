@@ -12,6 +12,8 @@ import {
   detectStacks,
   dimensionText,
   isWatchedFile,
+  MODE_HINT,
+  modeLine,
   newViolations,
   parsePerFinding,
   parseStatus,
@@ -56,7 +58,9 @@ const hud = {
   cwd: '',
   kinerjaRoot: undefined as string | undefined,
   isActive: false,
-  rulesText: undefined as string | undefined,
+  rules: undefined as { thresholds: Array<[string, number]>; perFinding: number | undefined } | undefined,
+  // Panel dibuka setelah status pertama folder ini diketahui (mode off tidak membuka panel).
+  isPaneWanted: false,
   lastRefreshAt: 0,
   isDirty: false,
   running: undefined as Promise<HudStatus> | undefined,
@@ -180,7 +184,10 @@ async function rootStacks($: EngineInterface): Promise<string[]> {
   return detectStacks(entries.map(entry => entry.name))
 }
 
-async function loadRulesText($: EngineInterface, root: string): Promise<string | undefined> {
+async function loadRules(
+  $: EngineInterface,
+  root: string,
+): Promise<{ thresholds: Array<[string, number]>; perFinding: number | undefined } | undefined> {
   const structural = `${root}/rules/quality-score/structural.md`
   if (!(await $.fs.exists(structural))) {
     return undefined
@@ -193,7 +200,7 @@ async function loadRulesText($: EngineInterface, root: string): Promise<string |
   const perFinding = (await $.fs.exists(scoring))
     ? parsePerFinding(String(await $.fs.read(scoring)))
     : undefined
-  return rulesSection(thresholds, perFinding)
+  return { thresholds, perFinding }
 }
 
 async function runStatus($: EngineInterface, root: string): Promise<HudStatus> {
@@ -245,16 +252,13 @@ async function activate($: EngineInterface, cwd: string): Promise<void> {
   hud.hasStack = hud.isActive && (await rootStacks($)).length > 0
   await update($, status, () => null)
   if (hud.isActive && hud.kinerjaRoot !== undefined) {
-    hud.rulesText = await loadRulesText($, hud.kinerjaRoot)
+    hud.rules = await loadRules($, hud.kinerjaRoot)
+    hud.isPaneWanted = true
     refreshInBackground($)
   } else {
     $.ui.status(undefined)
   }
-  if (hud.isActive && hud.hasStack) {
-    await openPaneForRemoteSurfaces($).catch(() => undefined)
-  } else {
-    writeDebugInBackground($)
-  }
+  writeDebugInBackground($)
 }
 
 async function followSessionCwd($: EngineInterface): Promise<boolean> {
@@ -273,6 +277,10 @@ async function pollDiff($: EngineInterface): Promise<void> {
   hud.isPolling = true
   try {
     if ((await followSessionCwd($)) || !hud.isActive) {
+      return
+    }
+    // Mode off: tidak menghitung ulang otomatis; /kinerja tetap menghitung.
+    if ((await read($, status))?.mode === 'off') {
       return
     }
     if ((await diffFingerprint($)) !== hud.fingerprint) {
@@ -305,10 +313,18 @@ async function refresh($: EngineInterface): Promise<HudStatus | null> {
       hud.hasStack = next.stacks.length > 0
     }
     await update($, status, () => next)
+    if (next.mode === 'off') {
+      $.ui.status(undefined)
+      return next
+    }
     $.ui.status(statusLineText(next))
     const toast = toastText(newViolations(previous, next))
     if (toast !== undefined) {
       $.ui.toast(toast)
+    }
+    if (hud.isPaneWanted && hud.hasStack) {
+      hud.isPaneWanted = false
+      await openPaneForRemoteSurfaces($).catch(() => undefined)
     }
     return next
   })()
@@ -406,16 +422,24 @@ export const register: Register = on => {
     if (!hud.hasStack) {
       return { text: 'HUD Kinerja: stack repo ini tidak dikenali (tidak ada go.mod, package.json, composer.json, pyproject.toml/requirements.txt, Package.swift/*.xcodeproj, build.gradle, atau pubspec.yaml di root maupun subfolder app).' }
     }
-    return { text: fresh === null ? 'HUD Kinerja: status belum tersedia.' : reportText(fresh, REPORT_LIMIT) }
+    if (fresh === null) {
+      return { text: 'HUD Kinerja: status belum tersedia.' }
+    }
+    if (fresh.mode === 'off') {
+      return { text: `HUD Kinerja: ${modeLine(fresh)}. Band, panel, dan penahan push tidak aktif.\n${MODE_HINT}` }
+    }
+    return { text: `${reportText(fresh, REPORT_LIMIT)}\n  ${MODE_HINT}` }
   })
 
   on('prompt.compose', async ($, e, next) => {
     const composed = await next(e)
-    if (!hud.isActive || !hud.hasStack || hud.rulesText === undefined) {
+    const current = await read($, status)
+    if (!hud.isActive || !hud.hasStack || hud.rules === undefined || current === null || current.mode === 'off') {
       return composed
     }
+    const text = rulesSection(hud.rules.thresholds, hud.rules.perFinding, current.mode)
     return {
-      sections: [...composed.sections, { id: `${PLUGIN}:rules`, text: hud.rulesText, scope: 'session' as const }],
+      sections: [...composed.sections, { id: `${PLUGIN}:rules`, text, scope: 'session' as const }],
     }
   })
 
@@ -443,7 +467,8 @@ export const register: Register = on => {
       return next(e)
     }
     const fresh = await refresh($)
-    if (fresh === null || fresh.error !== null) {
+    // Hanya mode enforce yang menahan push; advisory/off tidak pernah memblokir.
+    if (fresh === null || fresh.error !== null || fresh.mode !== 'enforce') {
       return next(e)
     }
     const blocked = pushBlockReason(fresh)
@@ -475,7 +500,8 @@ export const register: Register = on => {
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     noteRender($, 'AbovePrompt', e.surface)
     const current = await read($, status)
-    if (!hud.isActive || !hud.hasStack || current === null || e.props.hasSurvey || (await read($, isHidden))) {
+    const isOff = current?.mode === 'off'
+    if (!hud.isActive || !hud.hasStack || current === null || isOff || e.props.hasSurvey || (await read($, isHidden))) {
       return next(e)
     }
     const { Box, Button, Text } = $.ui.resolve(e)
@@ -529,6 +555,9 @@ export const register: Register = on => {
     if (current === null) {
       return <Text dimColor>Menghitung prediksi skor Kinerja…</Text>
     }
+    if (current.mode === 'off') {
+      return <Text dimColor>HUD Kinerja mati untuk repo ini. {MODE_HINT}</Text>
+    }
     const gates = failedGates(current)
     const room = Math.max(1, (e.viewport?.rows ?? 30) - 8)
     return (
@@ -537,6 +566,7 @@ export const register: Register = on => {
         {current.dimensions.map(dim => (
           <Text>{dimensionText(dim)}</Text>
         ))}
+        <Text dimColor>{modeLine(current)}</Text>
         {current.stacks !== null && current.stacks.length > 0 && <Text dimColor>stack: {current.stacks.join(', ')}</Text>}
         {gates.map(gate => (
           <Text color="error">

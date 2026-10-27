@@ -1,5 +1,5 @@
 // Fungsi murni HUD: tanpa `$`, supaya bisa diuji langsung.
-import type { HudDimension, HudGate, HudStatus, HudViolation } from '../types'
+import type { HudDimension, HudGate, HudMode, HudStatus, HudViolation } from '../types'
 
 const DIMENSION_LABELS: Record<string, string> = {
   bug: 'Bug',
@@ -47,6 +47,7 @@ type RawStatus = {
   gates?: RawGate[]
   rules?: { age_days?: number; stale?: boolean }
   stacks?: Array<string | RawStack>
+  mode?: { value?: string; source?: string; detail?: string }
 }
 
 export const SUPPORTED_SCHEMA = 1
@@ -66,6 +67,8 @@ export function emptyStatus(error: string): HudStatus {
     head: '',
     diffHash: '',
     stacks: null,
+    mode: 'enforce',
+    modeSource: '',
     error,
   }
 }
@@ -73,6 +76,34 @@ export function emptyStatus(error: string): HudStatus {
 export function violationKey(v: RawViolation): string {
   return [v.file ?? '', v.symbol ?? '', v.category ?? ''].join('|')
 }
+
+const MODES: readonly HudMode[] = ['enforce', 'advisory', 'off']
+
+/** Mode dari kinerja_status; versi lama tanpa field mode = enforce (perilaku semula). */
+export function parseMode(value: string | undefined): HudMode {
+  return MODES.find(mode => mode === value) ?? 'enforce'
+}
+
+const MODE_LABELS: Record<HudMode, string> = {
+  enforce: 'wajib (aturan Kinerja ditegakkan)',
+  advisory: 'saran (estimasi saja, tidak ada yang diblokir)',
+  off: 'mati',
+}
+
+const MODE_SOURCES: Record<string, string> = {
+  env: 'env VENTURO_KINERJA_MODE',
+  'git-config': 'git config kinerja.mode',
+  marker: 'file .claude/venturo-kinerja.json',
+  remote: 'remote git github.com/venturo-id',
+  default: 'default repo non-Venturo',
+}
+
+export function modeLine(status: HudStatus): string {
+  const source = MODE_SOURCES[status.modeSource] ?? status.modeSource
+  return `mode: ${MODE_LABELS[status.mode]}${source === '' ? '' : ` — dari ${source}`}`
+}
+
+export const MODE_HINT = 'Ganti mode repo ini: git config kinerja.mode enforce|advisory|off'
 
 /** `react`, atau `react (nextjs)` bila framework-nya lebih spesifik dari id stack. */
 function stackName(stack: string | RawStack): string {
@@ -140,6 +171,8 @@ export function parseStatus(stdout: string): HudStatus {
     head: raw.head ?? '',
     diffHash: raw.diff_hash ?? '',
     stacks: raw.stacks === undefined ? null : raw.stacks.map(stackName).filter(name => name !== ''),
+    mode: parseMode(raw.mode?.value),
+    modeSource: raw.mode?.source ?? '',
     error: null,
   }
 }
@@ -187,7 +220,8 @@ export function summaryLine(status: HudStatus): string {
   if (status.error !== null) {
     return `Kinerja: ${status.error}`
   }
-  const parts = [`Kinerja ${scoreText(status)}`, ...status.dimensions.map(dimensionText)]
+  const label = status.mode === 'advisory' ? 'Kinerja (saran)' : 'Kinerja'
+  const parts = [`${label} ${scoreText(status)}`, ...status.dimensions.map(dimensionText)]
   if (status.status === 'blocked') {
     parts.push(`⛔ tidak dinilai: ${status.blockedBy.map(gateLabel).join(', ')}`)
   }
@@ -205,7 +239,8 @@ export function statusLineText(status: HudStatus): string {
     return `kinerja ⛔ ${status.blockedBy.map(gateLabel).join(', ')}`
   }
   const stale = status.isRulesStale ? ` · ⚠ rules ${Math.floor(status.rulesAgeDays)}h` : ''
-  return `kinerja ${scoreText(status)}${stale}`
+  const label = status.mode === 'advisory' ? 'kinerja saran' : 'kinerja'
+  return `${label} ${scoreText(status)}${stale}`
 }
 
 export function violationLine(v: HudViolation): string {
@@ -226,7 +261,7 @@ export function toastText(added: HudViolation[]): string | undefined {
 
 /** Laporan multi-baris untuk perintah /kinerja. */
 export function reportText(status: HudStatus, limit: number): string {
-  const lines = [summaryLine(status)]
+  const lines = [summaryLine(status), `  ${modeLine(status)}`]
   if (status.stacks !== null && status.stacks.length > 0) {
     lines.push(`  stack: ${status.stacks.join(', ')}`)
   }
@@ -266,9 +301,22 @@ export function parsePerFinding(scoringMd: string): number | undefined {
 }
 
 /** Section system prompt: ringkasan ambang review Kinerja, angka dari rules. */
-export function rulesSection(thresholds: Array<[string, number]>, perFinding: number | undefined): string {
+export function rulesSection(
+  thresholds: Array<[string, number]>,
+  perFinding: number | undefined,
+  mode: HudMode = 'enforce',
+): string {
   const limits = thresholds.map(([name, max]) => `${name} ≤ ${max}`).join(', ')
   const deduction = perFinding === undefined ? '' : ` (−${perFinding} per temuan di dimensinya)`
+  if (mode === 'advisory') {
+    return [
+      '# Saran kualitas kode ala code review Kinerja (venturo-kinerja-hud, mode saran)',
+      'Repo ini TIDAK diwajibkan mengikuti aturan Kinerja; ambang berikut adalah saran kualitas, bukan syarat commit/PR:',
+      `- Ambang struktur pada fungsi/file yang kamu ubah${deduction}: ${limits}.`,
+      '- Fungsi/method dihitung dari deklarasi sampai penutup badannya termasuk baris kosong dan komentar; nesting dihitung dari badan fungsi.',
+      '- Jangan memaksakan format commit Venturo atau kode issue Space di repo ini; ikuti konvensi repo sendiri.',
+    ].join('\n')
+  }
   return [
     '# Standar code review Kinerja (venturo-kinerja-hud)',
     'Kode di repo ini dinilai otomatis oleh code review Kinerja. Tulis kode yang lolos di run pertama:',
