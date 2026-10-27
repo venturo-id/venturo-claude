@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {"severity": "medium", "title": "Error repository tidak dibungkus konteks"},
+    {"severity": "medium", "title": "Pagination tanpa batas atas"}
+  ],
+  "quality": {
+    "findings": [
+      {"category": "oversized-function", "evidence": "internal/modules/user/service.go:42", "note": "CreateUser 63 baris > 50"},
+      {"category": "magic-value", "evidence": "internal/modules/user/service.go:88", "note": "literal 30 untuk TTL"},
+      {"category": "naming-convention", "evidence": "internal/modules/user/handler.go:17", "note": "flag boolean tanpa prefix is/has"},
+      {"category": "stale-comment", "evidence": "internal/modules/user/service.go:40", "note": "kategori tidak aktif di production"}
+    ],
+    "doc_sync_applicable": true,
+    "doc_sync_updated": false
+  },
+  "changed_files": [
+    {"path": "internal/modules/user/service.go", "additions": 96, "deletions": 12},
+    {"path": "internal/modules/user/handler.go", "additions": 24, "deletions": 3}
+  ]
+}

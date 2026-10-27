@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Claude Code plugin marketplace by Venturo - Professional development tools and automation utilities",
-    "version": "1.0.14",
+    "version": "1.0.15",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -41,6 +41,76 @@
         "mcp",
         "onboarding",
         "subagents"
+      ]
+    },
+    {
+      "name": "venturo-kinerja",
+      "source": "./plugins/venturo-kinerja",
+      "description": "Menyelaraskan vibe coding dengan AI code review kinerja.venturo.id - snapshot mentah 25 context review production + simulator skor (port 1:1 mesin skor kinerja-be), ambang struktur multi-bahasa (Go, Python, TS/JS presisi via go/ast, ast, TypeScript compiler API; PHP, Swift, Kotlin, Dart, Java heuristik), kinerja_status.py (deteksi stack, pelanggaran, gate commit/trivial/agent-docs/doc-sync, prediksi skor; kontrak JSON untuk mod HUD), skill venturo-kinerja-rules/precheck/pr, agent read-only kinerja-file-explorer & kinerja-verifier, dan hook ambang, guard pesan commit, guard CLAUDE.md, pengingat doc-sync, serta peringatan rules basi.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Venturo",
+        "email": "dev@venturo.id"
+      },
+      "homepage": "https://github.com/venturo-id/venturo-claude/tree/production/plugins/venturo-kinerja",
+      "repository": "https://github.com/venturo-id/venturo-claude",
+      "license": "MIT",
+      "keywords": [
+        "code-review",
+        "kinerja",
+        "quality-score",
+        "kpi",
+        "rules",
+        "simulator",
+        "hooks",
+        "golang",
+        "typescript",
+        "react",
+        "php",
+        "python",
+        "swift",
+        "kotlin",
+        "flutter"
+      ],
+      "category": "development",
+      "tags": [
+        "code-review",
+        "kinerja",
+        "quality-score",
+        "hooks",
+        "multi-language"
+      ]
+    },
+    {
+      "name": "venturo-kinerja-hud",
+      "source": "./plugins/venturo-kinerja-hud",
+      "description": "Mod HUD skor Kinerja di sesi Claude Code - band prediksi skor + pelanggaran di atas prompt, toast pelanggaran baru, status line, ringkasan ambang review di system prompt, dan penahan push/PR saat gate commit gagal atau PR sudah di-approve. Butuh plugin venturo-kinerja. Aktif di repo Go, JS/TS (React, Next.js, Node), PHP, Python, Swift, Kotlin, dan Dart/Flutter.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Venturo",
+        "email": "dev@venturo.id"
+      },
+      "homepage": "https://github.com/venturo-id/venturo-claude/tree/production/plugins/venturo-kinerja-hud",
+      "repository": "https://github.com/venturo-id/venturo-claude",
+      "license": "MIT",
+      "keywords": [
+        "kinerja",
+        "code-review",
+        "hud",
+        "mod",
+        "quality-score",
+        "golang"
+      ],
+      "category": "development",
+      "tags": [
+        "kinerja",
+        "hud",
+        "mod",
+        "golang",
+        "react",
+        "php",
+        "python",
+        "swift"
       ]
     },
     {

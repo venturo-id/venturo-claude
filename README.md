@@ -22,6 +22,8 @@ curl -fsSL https://raw.githubusercontent.com/venturo-id/venturo-claude/productio
 | Plugin | Version | Description |
 |--------|---------|-------------|
 | [venturo-arsenal](plugins/venturo-arsenal) | 1.0.0 | Team standard pack in one install — guard hooks (`rm -rf`, `git push --force`, `.env` reads/writes, with an audit log), Go/TS quality gates, 3 subagents, 7 team MCP servers with zero credentials, and an idempotent `arsenal-setup.sh` that installs the rest of the team's toolchain. |
+| [venturo-kinerja](plugins/venturo-kinerja) | 0.1.0 | Align vibe coding with the Kinerja AI code review — raw snapshot of the 25 production review contexts, a 1:1 port of the Kinerja scoring engine, multi-language threshold checks (Go, Python, TS/JS precise; PHP, Swift, Kotlin, Dart, Java heuristic), `kinerja_status.py` (stacks, violations, commit/trivial/agent-docs/doc-sync gates, predicted score; JSON contract for the HUD mod), precheck/PR skills, read-only subagents, and hooks. |
+| [venturo-kinerja-hud](plugins/venturo-kinerja-hud) | 0.1.0 | Claude Code mod (HUD) for the Kinerja review score — predicted score + violations band above the prompt, toast on new violations, status line, review thresholds in the system prompt, and a push/PR guard when the commit gate fails or the PR is already approved. Requires venturo-kinerja. Works in Go, JS/TS (React, Next.js, Node), PHP, Python, Swift, Kotlin and Dart/Flutter repos. |
 | [venturo-go](plugins/venturo-go) | 1.0.0 | Go backend automation for the Venturo skeleton — features, entities, endpoints, adapters via clean architecture. |
 | [venturo-react](plugins/venturo-react) | 1.0.0 | React frontend automation — generate features from OpenAPI specs (TypeScript, MUI, React Query). |
 | [venturo-planner](plugins/venturo-planner) | 1.0.0 | Database & API planning — ERD, DBML, PostgreSQL migrations, and API contracts following audit standards. |
@@ -29,6 +31,10 @@ curl -fsSL https://raw.githubusercontent.com/venturo-id/venturo-claude/productio
 | [grademe](plugins/grademe) | 0.7.2 | Vibe-coding session scoring against a 7-dimension rubric with Bahasa Indonesia coaching. v0.7 (deterministic scoring): the whole score computation moved into `scripts/validate.py --score`; the grader subagent returns only misses + advice; 25 anti-cheap-ritual counters and applicability clamps for sessions without substantive work. v0.6 (anti-gaming): bobot direbalance, misses wajib ≥2, score caps deterministik dari work_evidence, deteksi prompt sintetis, validate.py sebagai gerbang mekanis wajib. v0.5: dimensi delegation menilai orkestrasi skill & subagent (D1/D2/D3) dari sinyal ground-truth yang sukar dipalsukan; mandatory live-session grading, digest preprocessing (token-efficient), auto-upload ke leaderboard venturo.pro saat token peserta terpasang. |
 
 Each plugin's own README documents its commands and workflows.
+
+### Kinerja (code review score)
+
+Engineer guide (Bahasa Indonesia) for `venturo-kinerja` + `venturo-kinerja-hud` — installation on CLI, VS Code and the desktop app, enforce/advisory/off modes for Venturo vs personal repos, how to read the HUD, every state it can show, use cases, and the pre-PR checklist: [`plugins/venturo-kinerja/docs/PANDUAN-ENGINEER.md`](plugins/venturo-kinerja/docs/PANDUAN-ENGINEER.md).
 
 ## Repository
 
