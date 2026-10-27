@@ -233,6 +233,21 @@ class TestGuardCommitHook(FixtureCase):
         self.check("git commit --message='docs: y [FX-4]'", False)
         self.check("git -C %s commit -m 'oops'" % self.repo, True)
 
+    def test_cd_into_repo_from_other_folder(self):
+        # Sesi dibuka di folder induk (bukan repo git): repo tujuan diambil dari `cd`.
+        parent = tempfile.mkdtemp()
+        try:
+            def run(command):
+                code, _, err = run_hook("guard_commit", {"cwd": parent, "tool_name": "Bash",
+                                                         "tool_input": {"command": command}})
+                return code, err
+            self.assertEqual(run("cd %s && git commit -m 'oops'" % self.repo)[0], 2)
+            self.assertEqual(run("cd '%s'; git add -A && git commit -m 'oops'" % self.repo)[0], 2)
+            self.assertEqual(run("cd %s && git commit -m 'feat(user): x [FX-9]'" % self.repo)[0], 0)
+            self.assertEqual(run("git commit -m 'oops'")[0], 0)  # folder induk bukan repo: dilewati
+        finally:
+            shutil.rmtree(parent, ignore_errors=True)
+
     def test_heredoc(self):
         good = "git commit -m \"$(cat <<'EOF'\nfeat(user): export [FX-5]\n\nBody.\nEOF\n)\""
         bad = "git commit -m \"$(cat <<'EOF'\nupdate handler\n\nBody.\nEOF\n)\""

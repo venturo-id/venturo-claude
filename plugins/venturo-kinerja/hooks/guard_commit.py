@@ -6,6 +6,7 @@ dinilai. -F, -C, --amend tanpa -m, editor, atau pesan berisi substitusi shell
 dilewati: hook tidak menebak pesan yang tidak bisa dipastikan.
 """
 
+import os
 import re
 import shlex
 
@@ -61,12 +62,26 @@ def commit_message(command):
     return "\n\n".join(msgs)
 
 
+# `cd <dir> && git commit` / `cd <dir>; git commit`: repo yang di-commit adalah <dir>,
+# bukan folder sesi (mis. sesi dibuka di folder induk beberapa repo).
+CD_RE = re.compile(r"""(?:^|[;&|(]|&&)\s*cd\s+("[^"]+"|'[^']+'|[^\s;&|)]+)""")
+
+
+def _resolve(path, base):
+    path = os.path.expanduser(path.strip("'\""))
+    return path if path.startswith("/") else os.path.join(base, path)
+
+
 def repo_dir(command, cwd):
     m = GIT_COMMIT_RE.search(command)
-    opts = shlex.split(m.group(1)) if m and m.group(1) else []
+    if m is None:
+        return cwd
+    for cd in CD_RE.finditer(command[:m.start()]):
+        cwd = _resolve(cd.group(1), cwd)
+    opts = shlex.split(m.group(1)) if m.group(1) else []
     for i, tok in enumerate(opts[:-1]):
         if tok == "-C":
-            return opts[i + 1] if opts[i + 1].startswith("/") else cwd + "/" + opts[i + 1]
+            return _resolve(opts[i + 1], cwd)
     return cwd
 
 
