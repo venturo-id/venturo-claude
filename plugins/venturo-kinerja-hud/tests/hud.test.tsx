@@ -77,7 +77,14 @@ const BAND = {
   },
 } as const
 
-type World = { status: () => string; diff?: () => string; rootNames?: string[]; ghApproved?: boolean; surfaces?: string[] }
+type World = {
+  status: () => string
+  diff?: () => string
+  rootNames?: string[]
+  ghApproved?: boolean
+  surfaces?: string[]
+  cwd?: () => string
+}
 
 // Dunia di bawah plugin: plugin venturo-kinerja bersebelahan via env, repo Go, status dari `world`.
 function stubWorld(
@@ -127,6 +134,7 @@ function stubWorld(
     return { value: undefined }
   })
   on('ui.status', () => ({ value: undefined }))
+  on('session.cwd', () => ({ value: world.cwd?.() ?? REPO }))
   on('session.surfaces', () => ({ value: (world.surfaces ?? ['terminal']) as Array<'terminal' | 'desktop' | 'vscode' | 'mobile'> }))
   on('ui.open', (_, e) => {
     opened.push(e.id)
@@ -383,5 +391,29 @@ describe('mod', () => {
     const debug = await $.command.run({ ...KINERJA_COMMAND, args: 'debug' })
     expect(debug.text).toContain('surface terpasang: terminal')
     expect(world.writes[`${REPO}/.claude/venturo-kinerja/.gitignore`]).toBe('*\n')
+  })
+
+  test('desktop: sesi mulai di folder cadangan lalu pindah ke repo, HUD ikut aktif', async ($, on) => {
+    const SPARE = '/home/dev/.claude/spares/spare-abc'
+    let cwd = SPARE
+    const world = stubWorld(on, {
+      status: () => statusJson({ violations: [LONG_FUNC], final: 87 }),
+      surfaces: ['desktop'],
+      cwd: () => cwd,
+    })
+    await $.session.start({ cwd: SPARE, surface: 'desktop', isInteractive: true })
+    await world.clock.settle()
+    const before = await $.command.run({ ...KINERJA_COMMAND, args: 'debug' })
+    expect(before.text).toContain('aktif: false')
+
+    cwd = REPO
+    await world.clock.advance(8_000)
+    const after = await $.command.run({ ...KINERJA_COMMAND, args: 'debug' })
+    expect(after.text).toContain(`cwd: ${REPO}`)
+    expect(after.text).toContain('aktif: true · stack dikenali: true')
+    expect(world.opened).toContain('kinerja')
+    const ui = await $.ui.mount({ ...BAND, surface: 'desktop' })
+    expect(await ui.find({ type: 'Text', text: /Kinerja ≈87/ })).toBeDefined()
+    await ui.unmount()
   })
 })

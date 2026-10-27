@@ -231,12 +231,50 @@ async function diffFingerprint($: EngineInterface): Promise<string> {
   return `${diff}\n--untracked--\n${stamps.join('\n')}`
 }
 
+/**
+ * Pasang HUD untuk folder sesi `cwd`. Dipanggil saat sesi mulai dan setiap kali
+ * folder sesi berpindah: desktop app memulai sesi di folder cadangan
+ * (`~/.claude/spares/...`) lalu memindahkannya ke folder repo yang dipilih.
+ */
+async function activate($: EngineInterface, cwd: string): Promise<void> {
+  hud.cwd = cwd
+  hud.fingerprint = ''
+  hud.warnedPushKey = undefined
+  hud.kinerjaRoot = hud.kinerjaRoot ?? (await findKinerjaRoot($))
+  hud.isActive = hud.kinerjaRoot !== undefined && (await $.fs.exists(`${cwd}/.git`))
+  hud.hasStack = hud.isActive && (await rootStacks($)).length > 0
+  await update($, status, () => null)
+  if (hud.isActive && hud.kinerjaRoot !== undefined) {
+    hud.rulesText = await loadRulesText($, hud.kinerjaRoot)
+    refreshInBackground($)
+  } else {
+    $.ui.status(undefined)
+  }
+  if (hud.isActive && hud.hasStack) {
+    await openPaneForRemoteSurfaces($).catch(() => undefined)
+  } else {
+    writeDebugInBackground($)
+  }
+}
+
+async function followSessionCwd($: EngineInterface): Promise<boolean> {
+  const cwd = await $.session.cwd()
+  if (cwd === hud.cwd) {
+    return false
+  }
+  await activate($, cwd)
+  return true
+}
+
 async function pollDiff($: EngineInterface): Promise<void> {
-  if (!hud.isActive || hud.isPolling || hud.running !== undefined) {
+  if (hud.isPolling || hud.running !== undefined) {
     return
   }
   hud.isPolling = true
   try {
+    if ((await followSessionCwd($)) || !hud.isActive) {
+      return
+    }
     if ((await diffFingerprint($)) !== hud.fingerprint) {
       await refresh($)
     }
@@ -305,24 +343,24 @@ async function isPullRequestApproved($: EngineInterface): Promise<boolean> {
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const started = await next(e)
-    hud.cwd = e.cwd
     hud.debug.startedAt = new Date(await $.clock.now()).toISOString()
     await $.command.register({
       name: 'kinerja',
       description: 'Prediksi skor Kinerja + pelanggaran diff ini (args: show | hide | panel | debug)',
     })
-    hud.kinerjaRoot = await findKinerjaRoot($)
-    hud.isActive = hud.kinerjaRoot !== undefined && (await $.fs.exists(`${hud.cwd}/.git`))
-    hud.hasStack = hud.isActive && (await rootStacks($)).length > 0
-    if (hud.isActive && hud.kinerjaRoot !== undefined) {
-      hud.rulesText = await loadRulesText($, hud.kinerjaRoot)
-      refreshInBackground($)
-      $.clock.every(POLL_MS, () => pollInBackground($))
-    }
-    if (hud.isActive && hud.hasStack) {
-      await openPaneForRemoteSurfaces($).catch(() => undefined)
-    }
+    await activate($, e.cwd)
+    // Satu timer untuk sesi: mengikuti perpindahan folder sesi dan perubahan git diff.
+    $.clock.every(POLL_MS, () => pollInBackground($))
     return started
+  })
+
+  // Folder sesi berpindah (cd, desktop app memindahkan sesi dari folder cadangan).
+  on('classic.CwdChanged', async ($, e, next) => {
+    const changed = await next(e)
+    if (e.new_cwd !== hud.cwd) {
+      await activate($, e.new_cwd).catch(() => undefined)
+    }
+    return changed
   })
 
   // Desktop app / VS Code / ponsel yang menyambung setelah sesi mulai.
@@ -349,6 +387,7 @@ export const register: Register = on => {
       return { text: 'Band Kinerja ditampilkan.' }
     }
     if (arg === 'debug') {
+      await followSessionCwd($).catch(() => false)
       hud.debug.surfaces = [...(await $.session.surfaces())]
       await writeDebug($).catch(() => undefined)
       return { text: debugText() }
@@ -356,6 +395,7 @@ export const register: Register = on => {
     if (arg === 'panel') {
       return { text: `Panel Kinerja: ${await openPane($)}` }
     }
+    await followSessionCwd($).catch(() => false)
     if (hud.kinerjaRoot === undefined) {
       return { text: 'HUD Kinerja: plugin venturo-kinerja tidak ditemukan. Pasang venturo-kinerja@venturo-tools atau set VENTURO_KINERJA_ROOT.' }
     }
