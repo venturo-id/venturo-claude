@@ -5,6 +5,7 @@ import type { HudStatus } from '../types'
 import {
   emptyStatus,
   failedGates,
+  gateLabel,
   installedKinerjaPath,
   isCommitCommand,
   isGitPush,
@@ -78,6 +79,7 @@ const hud = {
     renders: {} as Record<string, number>,
     pane: 'belum dibuka',
     startedAt: '',
+    mode: '(belum diketahui)',
   },
 }
 
@@ -105,6 +107,7 @@ async function writeDebug($: EngineInterface): Promise<void> {
     surfaces: hud.debug.surfaces,
     renders: hud.debug.renders,
     pane: hud.debug.pane,
+    mode: hud.debug.mode,
   }
   await $.fs.write(`${dir}/hud-debug.json`, `${JSON.stringify(snapshot, null, 2)}\n`)
 }
@@ -148,6 +151,7 @@ function debugText(): string {
     `  aktif: ${hud.isActive} · stack dikenali: ${hud.hasStack}`,
     `  surface terpasang: ${hud.debug.surfaces.join(', ') || '(belum ada)'}`,
     `  render diminta: ${Object.entries(hud.debug.renders).map(([k, n]) => `${k}×${n}`).join(', ') || '(belum ada)'}`,
+    `  mode: ${hud.debug.mode}`,
     `  panel: ${hud.debug.pane}`,
     `  file: ${hud.cwd}/${STATE_DIR}/hud-debug.json`,
   ].join('\n')
@@ -313,6 +317,11 @@ async function refresh($: EngineInterface): Promise<HudStatus | null> {
       hud.hasStack = next.stacks.length > 0
     }
     await update($, status, () => next)
+    const mode = `${next.mode}${next.modeSource === '' ? '' : ` (${next.modeSource})`}`
+    if (mode !== hud.debug.mode) {
+      hud.debug.mode = mode
+      writeDebugInBackground($)
+    }
     if (next.mode === 'off') {
       $.ui.status(undefined)
       return next
@@ -537,7 +546,7 @@ export const register: Register = on => {
         {expanded &&
           gates.slice(0, room).map(gate => (
             <Text color="error">
-              gate {gate.id}: {gate.detail}
+              gate {gateLabel(gate.id)}: {gate.detail}
             </Text>
           ))}
         {expanded &&
@@ -570,7 +579,7 @@ export const register: Register = on => {
         {current.stacks !== null && current.stacks.length > 0 && <Text dimColor>stack: {current.stacks.join(', ')}</Text>}
         {gates.map(gate => (
           <Text color="error">
-            gate {gate.id}: {gate.detail}
+            gate {gateLabel(gate.id)}: {gate.detail}
           </Text>
         ))}
         {current.violations.length === 0 && gates.length === 0 && <Text color="success">Tidak ada pelanggaran statis.</Text>}
