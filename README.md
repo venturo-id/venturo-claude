@@ -32,6 +32,10 @@ curl -fsSL https://raw.githubusercontent.com/venturo-id/venturo-claude/productio
 
 Each plugin's own README documents its commands and workflows.
 
+### Kinerja (code review score)
+
+Engineer guide (Bahasa Indonesia) for `venturo-kinerja` + `venturo-kinerja-hud` — installation on CLI, VS Code and the desktop app, enforce/advisory/off modes for Venturo vs personal repos, how to read the HUD, every state it can show, use cases, and the pre-PR checklist: [`plugins/venturo-kinerja/docs/PANDUAN-ENGINEER.md`](plugins/venturo-kinerja/docs/PANDUAN-ENGINEER.md).
+
 ## Repository
 
 - Homepage: https://github.com/venturo-id/venturo-claude
