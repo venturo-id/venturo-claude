@@ -132,7 +132,7 @@ Kebutuhan: token GitHub (fine-grained PAT atau GitHub App) dengan izin **`action
 
 Sudah ada: [`scripts/sync_from_kinerja.py`](../scripts/sync_from_kinerja.py) dan [`.github/workflows/kinerja-sync.yml`](../../../.github/workflows/kinerja-sync.yml).
 
-Workflow (jadwal 08:00 WIB, `workflow_dispatch`):
+Workflow (self-hosted runner, jadwal 08:00 WIB, `workflow_dispatch`):
 1. `sync_from_kinerja.py --summary $RUNNER_TEMP/kinerja-sync.md`.
 2. Bila ada perubahan: test plugin dengan `continue-on-error`, supaya PR tetap dibuat walau test gagal.
 3. `peter-evans/create-pull-request@v7` (dijalankan juga saat tanpa perubahan, supaya PR sync lama yang sudah tidak relevan ditutup) ke branch `chore/kinerja-sync`, label `kinerja-sync`, plus `needs-port` bila test gagal; ringkasan sebagai body PR.
@@ -145,6 +145,7 @@ Script:
 - Bila ada perubahan: tulis `rules/<slug>.md` apa adanya, hapus file slug yang tidak aktif lagi, tulis ulang `rules.lock.json` (format sama), naikkan patch `plugin.json` + entri marketplace + `metadata.version`. Tanpa perubahan tidak ada file yang disentuh, jadi tidak ada PR.
 
 Setelan repo venturo-claude yang perlu dibuat (belum ada):
+- Self-hosted runner terdaftar di repo/org dengan label `self-hosted` dan sudah punya `python3` + `git` (Go opsional). Workflow tidak punya trigger `pull_request`, jadi PR fork tidak bisa menjalankan kode di runner ini; jangan tambahkan trigger itu selama repo publik.
 - Secret `KINERJA_API_KEY`: API key kinerja-be milik akun dengan izin `review:context:view`, sebaiknya di-scope hanya ke izin itu.
 - Opsional variable `KINERJA_API_URL` (default `https://kinerja-api.venturo.id`).
 - Opsional secret `KINERJA_SYNC_TOKEN` (PAT/App token, `contents` + `pull-requests` write). PR yang dibuat dengan `GITHUB_TOKEN` bawaan **tidak memicu workflow lain**, jadi CI tidak jalan di PR sync tanpa token ini.

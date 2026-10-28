@@ -6,6 +6,10 @@
 #   secrets.KINERJA_API_KEY    API key kinerja-be (izin review:context:view)
 #   secrets.KINERJA_SYNC_TOKEN opsional; PAT/App token supaya CI jalan di PR sync.
 #                              Dengan GITHUB_TOKEN bawaan, PR yang dibuat tidak memicu workflow lain.
+#
+# Jalan di self-hosted runner yang sudah terdaftar (butuh python3 dan git di mesin itu;
+# Go opsional, test Go dilewati bila tidak ada). Workflow ini sengaja tidak punya trigger
+# pull_request: repo publik, jadi kode dari PR fork tidak boleh jalan di runner sendiri.
 name: kinerja-sync
 
 on:
@@ -24,14 +28,10 @@ concurrency:
 jobs:
   sync:
     if: github.repository == 'venturo-id/venturo-claude'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
 
       - name: Sync rules
         id: sync
