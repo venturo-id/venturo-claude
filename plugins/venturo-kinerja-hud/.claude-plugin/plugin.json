@@ -1,6 +1,6 @@
 {
   "name": "venturo-kinerja-hud",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "HUD skor Kinerja di sesi Claude Code: band prediksi skor + pelanggaran di atas prompt, toast pelanggaran baru, status line, ringkasan ambang review di system prompt, dan penahan push/PR saat gate commit gagal atau PR sudah di-approve. Membaca kinerja_status.py dari plugin venturo-kinerja (wajib terpasang). Aktif di repo git dengan stack yang dikenali: Go, JS/TS (React, Next.js, Node), PHP, Python, Swift, Kotlin, Dart/Flutter.",
   "author": {
     "name": "Venturo",
