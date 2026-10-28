@@ -4,11 +4,11 @@
 # Setelan repo:
 #   vars.KINERJA_API_URL       opsional, default https://kinerja-api.venturo.id
 #   secrets.KINERJA_API_KEY    API key kinerja-be (izin review:context:view)
-#   secrets.KINERJA_SYNC_TOKEN opsional; PAT/App token supaya CI jalan di PR sync.
-#                              Dengan GITHUB_TOKEN bawaan, PR yang dibuat tidak memicu workflow lain.
+#   secrets.KINERJA_SYNC_TOKEN PAT bot venturo-pro. Wajib: org melarang GITHUB_TOKEN membuat PR.
+#                              Perbarui bila PAT bot dirotasi di Kinerja.
 #
-# Jalan di self-hosted runner yang sudah terdaftar (butuh python3 dan git di mesin itu;
-# Go opsional, test Go dilewati bila tidak ada). Workflow ini sengaja tidak punya trigger
+# Jalan di runner khusus repo ini di VM landa (label venturo-claude-sync, user ghrunner-vc;
+# butuh python3 dan git, Go opsional). Runner org (group Default) tidak melayani repo publik. Workflow ini sengaja tidak punya trigger
 # pull_request: repo publik, jadi kode dari PR fork tidak boleh jalan di runner sendiri.
 name: kinerja-sync
 
@@ -28,7 +28,7 @@ concurrency:
 jobs:
   sync:
     if: github.repository == 'venturo-id/venturo-claude'
-    runs-on: self-hosted
+    runs-on: [self-hosted, venturo-claude-sync]
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
