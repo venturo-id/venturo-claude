@@ -7,10 +7,10 @@ code review di [kinerja.venturo.id](https://kinerja.venturo.id). Tujuannya kuali
 nyata yang lolos review di run pertama, bukan mengakali reviewer: plugin tidak pernah menulis
 apa pun yang ditujukan ke reviewer.
 
-> **0.1.0.** Aktif di repo yang stack-nya dikenali dari manifest: Go, React/Next.js/Node
+> **0.1.1.** Aktif di repo yang stack-nya dikenali dari manifest: Go, React/Next.js/Node
 > (TS/JS), PHP (Laravel/CodeIgniter/Slim), Python, Swift (iOS), Kotlin, Dart/Flutter, Java.
-> **Rules = snapshot manual** sampai endpoint export context (tiket **KJ-G**) tersedia;
-> setelah itu sync dijalankan GitHub Action terjadwal.
+> **Rules disinkronkan GitHub Action harian** (`kinerja-sync`) dari API kinerja-be; perubahan
+> masuk sebagai PR `chore/kinerja-sync`.
 
 ```
 /plugin marketplace add venturo-id/venturo-claude
@@ -31,6 +31,7 @@ Prasyarat: `python3` dan `git`. Runtime tambahan hanya untuk analyzer presisi (l
 | `scripts/thresholds.py` | Dispatcher ambang struktur per bahasa; satu skema output untuk semua bahasa. Angka ambang dibaca dari `rules/quality-score/structural.md`. |
 | `scripts/go-thresholds/`, `analyze_python.py`, `ts-thresholds.cjs`, `analyze_clike.py` | Analyzer Go (`go/ast`), Python (`ast`), TS/JS (TypeScript compiler API project), dan heuristik bergaya C. |
 | `scripts/kinerja_status.py` | Status diff lokal: pelanggaran, gate, prediksi skor. `--json` = kontrak untuk mod HUD. |
+| `scripts/sync_from_kinerja.py` | Tarik context aktif dari API kinerja-be, tulis ulang `rules/` + `rules.lock.json` bila sha256/metadata berubah, naikkan versi. Dipakai workflow `kinerja-sync`. |
 | `scripts/render_rule.py` | Tampilkan rule dengan placeholder dirender (`{{SEVERITY_PENALTIES}}` dari angka mesin skor). |
 | `skills/venturo-kinerja-rules` | Auto-trigger saat menulis kode: ambang, kategori skor, doc-sync, gate, skill stack. |
 | `skills/venturo-kinerja-precheck` | Self-review diff dengan workflow reviewer kinerja → temuan berskema kinerja → prediksi skor + perbaikan urut poin. |
@@ -280,9 +281,25 @@ Vector simulator diturunkan dari test Go kinerja-be (asal tiap vector di komenta
 simulasi plan. Test status/hook memakai repo git sementara (`tests/fixture_repo.py`); fixture
 per bahasa ada di `tests/lang_fixtures.py`.
 
-## Sync ulang rules (manual, sampai KJ-G)
+## Sync rules
 
-> Rencana sinkronisasi otomatis dengan kinerja-be (export context, golden vector, dispatch, GitHub Action, cek paritas): [`docs/HANDOFF-SINKRONISASI.md`](docs/HANDOFF-SINKRONISASI.md).
+Otomatis: workflow [`.github/workflows/kinerja-sync.yml`](../../.github/workflows/kinerja-sync.yml)
+jalan tiap 08:00 WIB (dan manual lewat **Run workflow**). Ia menjalankan
+`scripts/sync_from_kinerja.py`, lalu test plugin; bila ada perubahan dibuat PR
+`chore/kinerja-sync` (label `kinerja-sync`, plus `needs-port` bila test gagal). Rencana lanjutan
+(export KJ-G, golden vector, pemicu dari kinerja-be): [`docs/HANDOFF-SINKRONISASI.md`](docs/HANDOFF-SINKRONISASI.md).
+
+Job jalan di self-hosted runner (`runs-on: self-hosted`, butuh `python3` + `git`).
+Setelan repo: secret `KINERJA_API_KEY` (API key kinerja-be, izin `review:context:view`),
+opsional variable `KINERJA_API_URL` dan secret `KINERJA_SYNC_TOKEN` (agar CI jalan di PR sync).
+
+Lokal (perlu API key sendiri):
+
+```bash
+KINERJA_API_KEY=... python3 plugins/venturo-kinerja/scripts/sync_from_kinerja.py
+```
+
+Cadangan manual bila API tidak bisa dipakai:
 
 1. Buka `https://kinerja.venturo.id/context`; expand baris ber-`(n)` (`php`, `quality-score`).
    Setelah expand ada 27 baris; `security` dan `workflow` pindah ke halaman 2.

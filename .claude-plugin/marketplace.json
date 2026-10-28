@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Claude Code plugin marketplace by Venturo - Professional development tools and automation utilities",
-    "version": "1.0.16",
+    "version": "1.0.17",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -47,7 +47,7 @@
       "name": "venturo-kinerja",
       "source": "./plugins/venturo-kinerja",
       "description": "Menyelaraskan vibe coding dengan AI code review kinerja.venturo.id - snapshot mentah 25 context review production + simulator skor (port 1:1 mesin skor kinerja-be), ambang struktur multi-bahasa (Go, Python, TS/JS presisi via go/ast, ast, TypeScript compiler API; PHP, Swift, Kotlin, Dart, Java heuristik), kinerja_status.py (deteksi stack, pelanggaran, gate commit/trivial/agent-docs/doc-sync, prediksi skor; kontrak JSON untuk mod HUD), skill venturo-kinerja-rules/precheck/pr, agent read-only kinerja-file-explorer & kinerja-verifier, dan hook ambang, guard pesan commit, guard CLAUDE.md, pengingat doc-sync, serta peringatan rules basi.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "Venturo",
         "email": "dev@venturo.id"

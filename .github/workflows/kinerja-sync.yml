@@ -1,0 +1,79 @@
+# Sinkronkan plugins/venturo-kinerja/rules dengan context aktif Kinerja production.
+# Detail: plugins/venturo-kinerja/docs/HANDOFF-SINKRONISASI.md (langkah 4-5).
+#
+# Setelan repo:
+#   vars.KINERJA_API_URL       opsional, default https://kinerja-api.venturo.id
+#   secrets.KINERJA_API_KEY    API key kinerja-be (izin review:context:view)
+#   secrets.KINERJA_SYNC_TOKEN opsional; PAT/App token supaya CI jalan di PR sync.
+#                              Dengan GITHUB_TOKEN bawaan, PR yang dibuat tidak memicu workflow lain.
+#
+# Jalan di self-hosted runner yang sudah terdaftar (butuh python3 dan git di mesin itu;
+# Go opsional, test Go dilewati bila tidak ada). Workflow ini sengaja tidak punya trigger
+# pull_request: repo publik, jadi kode dari PR fork tidak boleh jalan di runner sendiri.
+name: kinerja-sync
+
+on:
+  schedule:
+    - cron: "0 1 * * *" # 08:00 WIB
+  workflow_dispatch: {} # manual, atau dipicu kinerja-be sesudah approve context
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: kinerja-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository == 'venturo-id/venturo-claude'
+    runs-on: self-hosted
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync rules
+        id: sync
+        env:
+          KINERJA_API_URL: ${{ vars.KINERJA_API_URL }}
+          KINERJA_API_KEY: ${{ secrets.KINERJA_API_KEY }}
+        run: |
+          summary="$RUNNER_TEMP/kinerja-sync.md"
+          python3 plugins/venturo-kinerja/scripts/sync_from_kinerja.py --summary "$summary"
+          if [ -s "$summary" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Rules sama dengan Kinerja production." > "$summary"
+          fi
+
+      - name: Test plugin
+        id: tests
+        if: steps.sync.outputs.changed == 'true'
+        continue-on-error: true
+        run: python3 -m unittest discover -s plugins/venturo-kinerja/scripts/tests
+
+      - name: Catat test gagal di body PR
+        if: steps.tests.outcome == 'failure'
+        run: |
+          printf '\n> [!WARNING]\n> Test plugin gagal dengan rules baru: port mesin skor atau vector perlu dicek (label `needs-port`). Jangan merge sebelum diperbaiki.\n' >> "$RUNNER_TEMP/kinerja-sync.md"
+
+      # Tetap dijalankan tanpa perubahan: bila PR sync lama terbuka dan isinya sudah
+      # tidak berbeda dari production, action menghapus branch-nya (delete-branch).
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.KINERJA_SYNC_TOKEN || github.token }}
+          branch: chore/kinerja-sync
+          delete-branch: true
+          commit-message: "chore(venturo-kinerja): sync rules Kinerja"
+          title: "chore(venturo-kinerja): sync rules Kinerja"
+          body-path: ${{ runner.temp }}/kinerja-sync.md
+          labels: ${{ steps.tests.outcome == 'failure' && 'kinerja-sync,needs-port' || 'kinerja-sync' }}
+          add-paths: |
+            plugins/venturo-kinerja/rules
+            plugins/venturo-kinerja/.claude-plugin/plugin.json
+            .claude-plugin/marketplace.json
+
+      - name: Gagalkan run bila test gagal
+        if: steps.tests.outcome == 'failure'
+        run: exit 1
