@@ -1,7 +1,18 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
 import type { On } from 'claude-code'
 
-import { detectStacks, isWatchedFile, parseStatus, parseThresholds, pushWarning, rulesSection, summaryLine } from '../hooks/lib'
+import {
+  detectStacks,
+  isWatchedFile,
+  paneVerdict,
+  parseStatus,
+  parseThresholds,
+  pushWarning,
+  refreshCaption,
+  rulesSection,
+  scoreBar,
+  summaryLine,
+} from '../hooks/lib'
 
 const REPO = '/repo'
 const KINERJA = '/plugins/venturo-kinerja'
@@ -182,6 +193,14 @@ describe('lib', () => {
       expect(isWatchedFile(path)).toBe(true)
     }
     expect(isWatchedFile('assets/logo.png')).toBe(false)
+  })
+
+  test('panel: verdict, bar skor, dan keterangan hitung ulang', async () => {
+    expect(paneVerdict(parseStatus(statusJson()))).toBe('✓ Bersih — tidak ada pelanggaran statis')
+    expect(paneVerdict(parseStatus(statusJson({ commitOk: false })))).toBe('⛔ Tidak dinilai: format commit')
+    expect(scoreBar(70)).toBe('███████░░░')
+    expect(refreshCaption({ isRunning: true, checkedAt: 0, note: '' })).toBe('Menghitung ulang…')
+    expect(refreshCaption({ isRunning: false, checkedAt: null, note: '' })).toBe('Belum dihitung')
   })
 
   test('tanpa pelanggaran tidak ada peringatan push', async () => {
@@ -378,11 +397,38 @@ describe('mod', () => {
       surface: 'desktop',
       props: { title: 'Kinerja', isFocused: false, bodyColumns: 50, placement: 'dock', scroll: { offset: 0, bodyRows: 30 }, view: {} },
     })
-    expect((await pane.find({ type: 'Text', text: /Prediksi/ }))?.text).toBe('Prediksi ≈87')
-    expect(await pane.find({ type: 'Text', text: /oversized-function UserService.Create/ })).toBeDefined()
+    expect((await pane.find({ type: 'Text', text: /^≈/ }))?.text).toBe('≈87')
+    expect((await pane.find({ type: 'Text', text: /pelanggaran ·/ }))?.text).toBe('⚠ 1 pelanggaran · +3 poin bila diperbaiki')
+    expect(await pane.find({ type: 'Text', text: /^oversized-function$/ })).toBeDefined()
+    expect(await pane.find({ type: 'Text', text: /internal\/user\.service\.go:40/ })).toBeDefined()
     await pane.unmount()
     const debug = world.writes[`${REPO}/.claude/venturo-kinerja/hud-debug.json`]
     expect(debug).toContain('"Pane@desktop": 1')
+  })
+
+  test('panel: Hitung ulang memperbarui angka dan selalu memberi umpan balik', async ($, on) => {
+    let final = 87
+    stubWorld(on, { status: () => statusJson({ final }), surfaces: ['desktop'] })
+    await $.session.start({ cwd: REPO, surface: 'desktop', isInteractive: true })
+    await $.command.run(KINERJA_COMMAND)
+    for (const surface of ['terminal', 'desktop'] as const) {
+      const pane = await $.ui.mount({
+        plugin: 'venturo-kinerja-hud',
+        component: 'Pane',
+        requestId: 'kinerja',
+        surface,
+        props: { title: 'Kinerja', isFocused: false, bodyColumns: 50, placement: 'dock', scroll: { offset: 0, bodyRows: 30 }, view: {} },
+      })
+      final = 70
+      await pane.press({ key: 'refresh' })
+      expect((await pane.find({ type: 'Text', text: /^≈/ }))?.text).toBe('≈70')
+      // Ditekan lagi tanpa perubahan diff: tidak diam, tapi bilang tidak ada perubahan.
+      await pane.press({ key: 'refresh' })
+      expect((await pane.find({ type: 'Text', text: /^Dihitung \d\d:\d\d:\d\d/ }))?.text).toMatch(/tidak ada perubahan$/)
+      await pane.unmount()
+      final = 87
+      await $.command.run(KINERJA_COMMAND)
+    }
   })
 
   test('surface terminal: panel tidak dibuka otomatis; /kinerja debug melaporkan keadaan', async ($, on) => {

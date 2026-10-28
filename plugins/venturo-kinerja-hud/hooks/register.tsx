@@ -11,19 +11,28 @@ import {
   isGitPush,
   isPushCommand,
   detectStacks,
-  dimensionText,
+  isSameResult,
   isWatchedFile,
+  location,
   MODE_HINT,
   modeLine,
   newViolations,
+  paneHeadline,
+  paneMeta,
+  paneVerdict,
   parsePerFinding,
   parseStatus,
   parseThresholds,
   pushBlockReason,
   pushWarning,
+  refreshCaption,
   reportText,
   rulesSection,
+  scoreBar,
+  scoreTone,
+  skippedDimensionHint,
   statusLineText,
+  statusTone,
   summaryLine,
   toastText,
   violationLine,
@@ -34,6 +43,11 @@ const status = atom({ plugin: 'venturo-kinerja-hud', key: 'status' } as const, n
 const isHidden = atom({ plugin: 'venturo-kinerja-hud', key: 'isHidden' } as const, false)
 const isCompact = atom({ plugin: 'venturo-kinerja-hud', key: 'isCompact' } as const, false)
 const isExpanded = atom({ plugin: 'venturo-kinerja-hud', key: 'isExpanded' } as const, false)
+const refreshState = atom({ plugin: 'venturo-kinerja-hud', key: 'refresh' } as const, {
+  isRunning: false,
+  checkedAt: null,
+  note: '',
+})
 
 const STATUS_TIMEOUT_MS = 20_000
 const GIT_TIMEOUT_MS = 5_000
@@ -308,11 +322,13 @@ async function refresh($: EngineInterface): Promise<HudStatus | null> {
     return hud.running
   }
   hud.running = (async () => {
+    await update($, refreshState, run => ({ ...run, isRunning: true }))
     const previous = await read($, status)
     hud.fingerprint = await diffFingerprint($).catch(() => '')
     const next = await runStatus($, root)
     hud.lastRefreshAt = await $.clock.now()
     hud.isDirty = false
+    await update($, refreshState, () => ({ isRunning: false, checkedAt: hud.lastRefreshAt, note: '' }))
     if (next.stacks !== null) {
       hud.hasStack = next.stacks.length > 0
     }
@@ -341,12 +357,27 @@ async function refresh($: EngineInterface): Promise<HudStatus | null> {
     return await hud.running
   } finally {
     hud.running = undefined
+    await update($, refreshState, run => (run.isRunning ? { ...run, isRunning: false } : run)).catch(() => undefined)
   }
 }
 
 // Refresh tanpa ditunggu: kegagalannya (mis. modul di-reload di tengah jalan) diabaikan.
 function refreshInBackground($: EngineInterface): void {
   refresh($).catch(() => undefined)
+}
+
+/**
+ * Tombol Hitung ulang: hitung sekarang juga lalu beri tahu hasilnya. Polling
+ * biasanya sudah memperbarui angka lebih dulu, jadi "tidak ada perubahan" adalah
+ * jawaban yang sah dan harus terlihat, bukan diam.
+ */
+async function manualRefresh($: EngineInterface): Promise<void> {
+  await followSessionCwd($).catch(() => false)
+  const before = await read($, status)
+  const fresh = await refresh($)
+  const note =
+    fresh === null ? 'HUD tidak aktif di folder ini' : isSameResult(before, fresh) ? 'tidak ada perubahan' : 'diperbarui'
+  await update($, refreshState, run => ({ ...run, note }))
 }
 
 async function isPullRequestApproved($: EngineInterface): Promise<boolean> {
@@ -369,6 +400,8 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const started = await next(e)
     hud.debug.startedAt = new Date(await $.clock.now()).toISOString()
+    // Reload di tengah hitung tidak boleh meninggalkan panel di "Menghitung…".
+    await update($, refreshState, run => ({ ...run, isRunning: false }))
     await $.command.register({
       name: 'kinerja',
       description: 'Prediksi skor Kinerja + pelanggaran diff ini (args: show | hide | panel | debug)',
@@ -561,35 +594,122 @@ export const register: Register = on => {
     noteRender($, 'Pane', e.surface)
     const { Box, Button, Text } = $.ui.resolve(e)
     const current = await read($, status)
+    const run = await read($, refreshState)
+    const heading = (text: string) => (
+      <Text dimColor size="footnote" weight="semibold">
+        {text}
+      </Text>
+    )
+    const footer = (
+      <Box flexDirection="column">
+        <Box flexDirection="row" alignItems="center" gap={1}>
+          <Button
+            key="refresh"
+            label={run.isRunning ? 'Menghitung…' : 'Hitung ulang'}
+            onPress={() => manualRefresh($).catch(() => undefined)}
+          />
+          <Text dimColor size="caption">
+            {refreshCaption(run)}
+          </Text>
+        </Box>
+        <Text dimColor size="caption">
+          Dihitung otomatis setiap diff berubah (cek tiap {POLL_MS / 1000} detik).
+        </Text>
+      </Box>
+    )
     if (current === null) {
-      return <Text dimColor>Menghitung prediksi skor Kinerja…</Text>
+      return (
+        <Box flexDirection="column" gap={1}>
+          <Text dimColor>Menghitung prediksi skor Kinerja…</Text>
+          {footer}
+        </Box>
+      )
     }
     if (current.mode === 'off') {
       return <Text dimColor>HUD Kinerja mati untuk repo ini. {MODE_HINT}</Text>
     }
+    const tone = statusTone(current)
     const gates = failedGates(current)
-    const room = Math.max(1, (e.viewport?.rows ?? 30) - 8)
+    // Satu kartu pelanggaran ±3 baris; sisanya lewat /kinerja.
+    const limit = Math.min(PANE_LIMIT, Math.max(3, Math.floor(((e.viewport?.rows ?? 40) - 18) / 3)))
+    const shown = current.violations.slice(0, limit)
     return (
-      <Box flexDirection="column">
-        <Text bold>{current.error === null ? `Prediksi ${current.final === null ? '–' : `≈${current.final}`}` : current.error}</Text>
-        {current.dimensions.map(dim => (
-          <Text>{dimensionText(dim)}</Text>
-        ))}
-        <Text dimColor>{modeLine(current)}</Text>
-        {current.stacks !== null && current.stacks.length > 0 && <Text dimColor>stack: {current.stacks.join(', ')}</Text>}
-        {gates.map(gate => (
-          <Text color="error">
-            gate {gateLabel(gate.id)}: {gate.detail}
+      <Box flexDirection="column" gap={1}>
+        <Box flexDirection="column">
+          {heading(current.mode === 'advisory' ? 'PREDIKSI SKOR · MODE SARAN' : 'PREDIKSI SKOR')}
+          <Text color={tone} size="title" weight="bold" bold>
+            {paneHeadline(current)}
           </Text>
-        ))}
-        {current.violations.length === 0 && gates.length === 0 && <Text color="success">Tidak ada pelanggaran statis.</Text>}
-        {current.violations.slice(0, Math.min(PANE_LIMIT, room)).map(v => (
-          <Text dimColor>{violationLine(v)}</Text>
-        ))}
-        {current.violations.length > Math.min(PANE_LIMIT, room) && (
-          <Text dimColor>… {current.violations.length - Math.min(PANE_LIMIT, room)} pelanggaran lain (/kinerja)</Text>
+          <Text color={tone}>{paneVerdict(current)}</Text>
+          {current.error === null && (
+            <Text dimColor size="caption">
+              {paneMeta(current)}
+            </Text>
+          )}
+        </Box>
+
+        {current.dimensions.length > 0 && (
+          <Box flexDirection="column">
+            {heading('DIMENSI')}
+            {current.dimensions.map(dim =>
+              dim.isSkipped || dim.score === null ? (
+                <Text mono dimColor>
+                  {dim.label.padEnd(9)}
+                  {'·'.repeat(10)}
+                  {'   –'} {skippedDimensionHint(dim)}
+                </Text>
+              ) : (
+                <Text mono>
+                  {dim.label.padEnd(9)}
+                  <Text color={scoreTone(dim.score)}>{scoreBar(dim.score)}</Text>
+                  <Text bold>{String(dim.score).padStart(4)}</Text>
+                  {dim.findings > 0 && <Text dimColor> · {dim.findings} temuan</Text>}
+                </Text>
+              ),
+            )}
+          </Box>
         )}
-        <Button key="refresh" label="Hitung ulang" onPress={() => refreshInBackground($)} />
+
+        {gates.length > 0 && (
+          <Box flexDirection="column">
+            {heading(`GATE GAGAL (${gates.length})`)}
+            {gates.map(gate => (
+              <Text color="error">
+                ⛔ <Text bold>{gateLabel(gate.id)}</Text> — {gate.detail}
+              </Text>
+            ))}
+          </Box>
+        )}
+
+        {current.error === null && (
+          <Box flexDirection="column" gap={1}>
+            {heading(`PELANGGARAN (${current.violations.length})`)}
+            {current.violations.length === 0 && <Text color="success">Tidak ada pelanggaran statis.</Text>}
+            {shown.map(v => (
+              <Box flexDirection="column">
+                <Text>
+                  {v.points > 0 && <Text color="warning" bold>−{v.points} </Text>}
+                  <Text bold>{v.category}</Text>
+                  {v.symbol !== '' && <Text> · {v.symbol}</Text>}
+                </Text>
+                <Text dimColor mono size="caption">
+                  {location(v)}
+                </Text>
+                <Text dimColor>{v.detail}</Text>
+              </Box>
+            ))}
+            {current.violations.length > shown.length && (
+              <Text dimColor>
+                … {current.violations.length - shown.length} pelanggaran lain — ketik /kinerja untuk daftar lengkap
+              </Text>
+            )}
+          </Box>
+        )}
+
+        {footer}
+        <Text dimColor size="caption">
+          {modeLine(current)}
+        </Text>
       </Box>
     )
   })

@@ -1,5 +1,5 @@
 // Fungsi murni HUD: tanpa `$`, supaya bisa diuji langsung.
-import type { HudDimension, HudGate, HudMode, HudStatus, HudViolation } from '../types'
+import type { HudDimension, HudGate, HudMode, HudRefresh, HudStatus, HudViolation } from '../types'
 
 const DIMENSION_LABELS: Record<string, string> = {
   bug: 'Bug',
@@ -241,6 +241,110 @@ export function statusLineText(status: HudStatus): string {
   const stale = status.isRulesStale ? ` · ⚠ rules ${Math.floor(status.rulesAgeDays)}h` : ''
   const label = status.mode === 'advisory' ? 'kinerja saran' : 'kinerja'
   return `${label} ${scoreText(status)}${stale}`
+}
+
+// --- Panel samping ---
+
+const BAR_CELLS = 10
+
+/** Kunci warna tema untuk satu skor 0–100. */
+export function scoreTone(score: number): 'success' | 'warning' | 'error' {
+  if (score >= 90) {
+    return 'success'
+  }
+  return score >= 70 ? 'warning' : 'error'
+}
+
+/** Warna keseluruhan status, sama dengan band: error > diblokir > ada pelanggaran > bersih. */
+export function statusTone(status: HudStatus): 'subtle' | 'success' | 'warning' | 'error' {
+  if (status.error !== null) {
+    return 'subtle'
+  }
+  if (status.status === 'blocked') {
+    return 'error'
+  }
+  return status.violations.length > 0 || failedGates(status).length > 0 ? 'warning' : 'success'
+}
+
+/** Bar 10 sel untuk skor dimensi: `███████░░░`. */
+export function scoreBar(score: number): string {
+  const filled = Math.max(0, Math.min(BAR_CELLS, Math.round(score / 10)))
+  return `${'█'.repeat(filled)}${'░'.repeat(BAR_CELLS - filled)}`
+}
+
+/** Angka besar di kepala panel. */
+export function paneHeadline(status: HudStatus): string {
+  if (status.error !== null || status.final === null || status.status === 'trivial') {
+    return '–'
+  }
+  return `≈${status.final}`
+}
+
+/** Satu kalimat di bawah angka: kenapa skornya begitu. */
+export function paneVerdict(status: HudStatus): string {
+  if (status.error !== null) {
+    return status.error
+  }
+  if (status.status === 'blocked') {
+    return `⛔ Tidak dinilai: ${status.blockedBy.map(gateLabel).join(', ')}`
+  }
+  if (status.status === 'trivial') {
+    return 'Tidak dinilai (PR < 5 baris)'
+  }
+  if (status.final === null) {
+    return 'Belum ada prediksi'
+  }
+  const count = status.violations.length
+  if (count === 0) {
+    return '✓ Bersih — tidak ada pelanggaran statis'
+  }
+  const points = status.violations.reduce((sum, v) => sum + v.points, 0)
+  const recover = points > 0 ? ` · +${points} poin bila diperbaiki` : ''
+  return `⚠ ${count} pelanggaran${recover}`
+}
+
+/** Baris konteks di bawah verdict: ukuran diff dan stack. */
+export function paneMeta(status: HudStatus): string {
+  const parts = [`${status.changedLines} baris berubah`]
+  if (status.stacks !== null && status.stacks.length > 0) {
+    parts.push(status.stacks.join(', '))
+  }
+  if (status.isRulesStale) {
+    parts.push(`⚠ rules ${Math.floor(status.rulesAgeDays)} hari`)
+  }
+  return parts.join(' · ')
+}
+
+/** Isi kolom kanan baris dimensi yang tidak dihitung. */
+export function skippedDimensionHint(dim: HudDimension): string {
+  return dim.key === 'bug' ? 'jalankan precheck' : 'tidak dihitung'
+}
+
+function twoDigits(n: number): string {
+  return String(n).padStart(2, '0')
+}
+
+/** `14:02:31` waktu lokal dari epoch ms. */
+export function clockText(ms: number): string {
+  const at = new Date(ms)
+  return `${twoDigits(at.getHours())}:${twoDigits(at.getMinutes())}:${twoDigits(at.getSeconds())}`
+}
+
+/** Keterangan di samping tombol Hitung ulang. */
+export function refreshCaption(refresh: HudRefresh): string {
+  if (refresh.isRunning) {
+    return 'Menghitung ulang…'
+  }
+  if (refresh.checkedAt === null) {
+    return 'Belum dihitung'
+  }
+  const note = refresh.note === '' ? '' : ` · ${refresh.note}`
+  return `Dihitung ${clockText(refresh.checkedAt)}${note}`
+}
+
+/** Hasil hitung ulang sama persis dengan sebelumnya (dipakai untuk umpan balik tombol). */
+export function isSameResult(before: HudStatus | null, after: HudStatus): boolean {
+  return before !== null && JSON.stringify(before) === JSON.stringify(after)
 }
 
 export function violationLine(v: HudViolation): string {

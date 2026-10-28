@@ -46,10 +46,18 @@ export type HudStatus = {
   error: string | null
 }
 
+// Umpan balik hitung ulang di panel: sedang berjalan, kapan terakhir, dan hasil tombol.
+export type HudRefresh = {
+  isRunning: boolean
+  checkedAt: number | null
+  note: string
+}
+
 declare module 'claude-code' {
   interface PluginState {
     'venturo-kinerja-hud': {
       status: HudStatus | null
+      refresh: HudRefresh
       isHidden: boolean
       isCompact: boolean
       isExpanded: boolean
