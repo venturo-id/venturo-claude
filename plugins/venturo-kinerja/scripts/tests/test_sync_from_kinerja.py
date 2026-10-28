@@ -43,17 +43,37 @@ def fake_fetch(contexts, pending_only=()):
     return fetch
 
 
+def ctx(slug, content, version=1, **kw):
+    row = {"id": "id-" + slug.replace("/", "~"), "slug": slug, "content": content, "category": "stack",
+           "skill_type": "dynamic", "status": "approved", "version": version, "is_active": True,
+           "description": None, "updated_at": "2026-10-01T00:00:00Z"}
+    row.update(kw)
+    return row
+
+
+def fixture_contexts():
+    """Data uji tetap, terpisah dari snapshot rules/ yang berubah tiap sync."""
+    return [ctx("golang", "# Go\n", 2), ctx("laporan", "# Laporan\n", 15, skill_type="required"),
+            ctx("php", "# PHP\n"), ctx("php/laravel", "# Laravel\n"), ctx("workflow", "# Workflow\n", 12)]
+
+
 class SyncTestCase(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, self.tmp)
         self.rules = os.path.join(self.tmp, "rules")
-        shutil.copytree(RULES_DIR, self.rules)
         self.plugin_json = os.path.join(self.tmp, "plugin.json")
         self.market_json = os.path.join(self.tmp, "marketplace.json")
         sync_mod.write_json(self.plugin_json, {"name": "venturo-kinerja", "version": "0.1.1"})
         sync_mod.write_json(self.market_json, {"metadata": {"version": "1.0.17"}, "plugins": [
             {"name": "venturo-arsenal", "version": "1.0.1"}, {"name": "venturo-kinerja", "version": "0.1.1"}]})
+
+    def use_fixture(self):
+        """rules/ awal = hasil sync dari fixture_contexts()."""
+        os.makedirs(self.rules)
+        sync_mod.write_json(os.path.join(self.rules, "rules.lock.json"),
+                            {"schema_version": 1, "source": {}, "synced_at": "", "count": 0, "contexts": []})
+        sync_mod.sync(fixture_contexts(), self.rules, NOW)
 
     def run_sync(self, contexts):
         fetched = sync_mod.fetch_active(fake_fetch(contexts))
@@ -67,17 +87,36 @@ class SyncTestCase(unittest.TestCase):
         return next(c for c in contexts if c["slug"] == slug)
 
 
-class TestSync(SyncTestCase):
+class TestSyncSnapshot(SyncTestCase):
+    """Snapshot asli harus round-trip: API yang setara dengan rules/ = tanpa perubahan."""
+
+    def setUp(self):
+        super().setUp()
+        shutil.copytree(RULES_DIR, self.rules)
+
     def test_no_change_touches_nothing(self):
         before = self.lock()
         self.assertIsNone(self.run_sync(snapshot_contexts()))
         self.assertEqual(self.lock(), before)
         self.assertEqual(sync_mod.read_json(self.plugin_json)["version"], "0.1.1")
 
-    def test_content_change_without_version_bump_is_detected(self):
+    def test_lock_written_by_sync_matches_files(self):
         ctxs = snapshot_contexts()
+        ctxs[0]["content"] = "isi baru ✓\n"
+        self.run_sync(ctxs)
+        for e in self.lock()["contexts"]:
+            self.assertEqual(sync_mod.file_sha256(os.path.join(self.rules, e["file"])), e["sha256"])
+
+
+class TestSync(SyncTestCase):
+    def setUp(self):
+        super().setUp()
+        self.use_fixture()
+
+    def test_content_change_without_version_bump_is_detected(self):
+        ctxs = fixture_contexts()
         laporan = self.by_slug(ctxs, "laporan")
-        laporan["content"] += "\nbaris baru\n"
+        laporan["content"] += "\nbaris baru ✓\n"
         summary = self.run_sync(ctxs)
         self.assertIn("| `laporan` | isi berubah, versi tetap | 15 → 15 |", summary)
         with open(os.path.join(self.rules, "laporan.md"), encoding="utf-8") as fh:
@@ -88,7 +127,7 @@ class TestSync(SyncTestCase):
         self.assertEqual(self.lock()["source"]["method"], "api-sync")
 
     def test_version_bumps_plugin_and_marketplace(self):
-        ctxs = snapshot_contexts()
+        ctxs = fixture_contexts()
         self.by_slug(ctxs, "workflow").update(version=13, content="baru\n")
         summary = self.run_sync(ctxs)
         self.assertIn("| `workflow` | isi berubah | 12 → 13 |", summary)
@@ -98,48 +137,43 @@ class TestSync(SyncTestCase):
         self.assertEqual([p["version"] for p in market["plugins"]], ["1.0.1", "0.1.2"])
 
     def test_new_and_removed_slugs(self):
-        ctxs = [c for c in snapshot_contexts() if not c["slug"].startswith("php")]
-        ctxs.append({"id": "new", "slug": "rust", "content": "# Rust\n", "category": "stack",
-                     "skill_type": "dynamic", "status": "approved", "version": 1, "is_active": True,
-                     "description": None, "updated_at": "2026-10-28T00:00:00Z"})
+        ctxs = [c for c in fixture_contexts() if not c["slug"].startswith("php")]
+        ctxs.append(ctx("team_rules", "# Tim\n"))
         summary = self.run_sync(ctxs)
-        self.assertIn("| `rust` | baru | 1 |", summary)
+        self.assertIn("| `team_rules` | baru | 1 |", summary)
         self.assertIn("| `php/laravel` | dihapus | 1 |", summary)
         self.assertFalse(os.path.exists(os.path.join(self.rules, "php")))
-        self.assertTrue(os.path.exists(os.path.join(self.rules, "rust.md")))
+        self.assertFalse(os.path.exists(os.path.join(self.rules, "php.md")))
+        self.assertTrue(os.path.exists(os.path.join(self.rules, "team_rules.md")))
         lock = self.lock()
         self.assertEqual(lock["count"], len(ctxs))
         self.assertEqual([e["slug"] for e in lock["contexts"]], sorted(c["slug"] for c in ctxs))
 
     def test_metadata_only_change(self):
-        ctxs = snapshot_contexts()
+        ctxs = fixture_contexts()
         self.by_slug(ctxs, "golang")["skill_type"] = "required"
         self.assertIn("| `golang` | metadata: skill_type |", self.run_sync(ctxs))
 
-    def test_lock_written_by_sync_matches_files(self):
-        ctxs = snapshot_contexts()
-        self.by_slug(ctxs, "react")["content"] = "isi react ✓\n"
-        self.run_sync(ctxs)
-        for e in self.lock()["contexts"]:
-            self.assertEqual(sync_mod.file_sha256(os.path.join(self.rules, e["file"])), e["sha256"])
 
-
-class TestFetchActive(SyncTestCase):
+class TestFetchActive(unittest.TestCase):
     def test_skips_pending_only_slugs(self):
-        ctxs = snapshot_contexts()
+        ctxs = fixture_contexts()
         got = sync_mod.fetch_active(fake_fetch(ctxs, pending_only=["draft-baru"]))
         self.assertEqual(len(got), len(ctxs))
 
-    def test_rejects_path_traversal_slug(self):
-        for slug in ("../evil", "/abs", "a//b", "A", "a/"):
+    def test_accepts_backend_slug_pattern(self):
+        for slug in ("team_rules", "quality-score/doc-sync", "a_b/c-d"):
             with self.subTest(slug):
-                ctxs = snapshot_contexts()[:1]
-                ctxs[0]["slug"] = slug
+                self.assertEqual(len(sync_mod.fetch_active(fake_fetch([ctx(slug, "x")]))), 1)
+
+    def test_rejects_unsafe_slug(self):
+        for slug in ("../evil", "/abs", "a//b", "A", "a/", "a/b/c", "a.md", "a\n", "x" * 65):
+            with self.subTest(slug):
                 with self.assertRaises(sync_mod.SyncError):
-                    sync_mod.fetch_active(fake_fetch(ctxs))
+                    sync_mod.fetch_active(fake_fetch([ctx(slug, "x")]))
 
     def test_rejects_row_that_is_no_longer_active(self):
-        ctxs = snapshot_contexts()
+        ctxs = fixture_contexts()
         ctxs[0]["is_active"] = False
         with self.assertRaises(sync_mod.SyncError):
             sync_mod.fetch_active(fake_fetch(ctxs))
@@ -154,6 +188,11 @@ class _Handler(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
         _Handler.seen.append((self.path, self.headers.get("X-API-Key")))
+        if self.path.startswith("/redirect"):
+            self.send_response(302)
+            self.send_header("Location", "http://127.0.0.1:%d/leak" % self.server.server_port)
+            self.end_headers()
+            return
         if self.headers.get("X-API-Key") != "k":
             self.send_response(401)
             self.end_headers()
@@ -190,6 +229,12 @@ class TestApiFetcher(unittest.TestCase):
         self.assertIn("HTTP 401", str(cm.exception))
         self.assertIn("review:context:view", str(cm.exception))
         self.assertNotIn("rahasia", str(cm.exception))
+
+    def test_does_not_follow_redirects(self):
+        with self.assertRaises(sync_mod.SyncError) as cm:
+            sync_mod.api_fetcher(self.base + "/redirect", "k")("/contexts")
+        self.assertIn("HTTP 302", str(cm.exception))
+        self.assertNotIn("/leak", [path for path, _ in _Handler.seen])
 
     def test_refuses_plain_http_to_remote_host(self):
         with self.assertRaises(sync_mod.SyncError):

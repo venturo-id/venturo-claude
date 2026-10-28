@@ -41,7 +41,11 @@ jobs:
         run: |
           summary="$RUNNER_TEMP/kinerja-sync.md"
           python3 plugins/venturo-kinerja/scripts/sync_from_kinerja.py --summary "$summary"
-          if [ -s "$summary" ]; then echo "changed=true" >> "$GITHUB_OUTPUT"; fi
+          if [ -s "$summary" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Rules sama dengan Kinerja production." > "$summary"
+          fi
 
       - name: Test plugin
         id: tests
@@ -54,8 +58,9 @@ jobs:
         run: |
           printf '\n> [!WARNING]\n> Test plugin gagal dengan rules baru: port mesin skor atau vector perlu dicek (label `needs-port`). Jangan merge sebelum diperbaiki.\n' >> "$RUNNER_TEMP/kinerja-sync.md"
 
+      # Tetap dijalankan tanpa perubahan: bila PR sync lama terbuka dan isinya sudah
+      # tidak berbeda dari production, action menghapus branch-nya (delete-branch).
       - uses: peter-evans/create-pull-request@v7
-        if: steps.sync.outputs.changed == 'true'
         with:
           token: ${{ secrets.KINERJA_SYNC_TOKEN || github.token }}
           branch: chore/kinerja-sync

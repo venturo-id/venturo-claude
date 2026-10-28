@@ -33,13 +33,21 @@ ROOT_DIR = os.path.dirname(os.path.dirname(PLUGIN_DIR))
 PLUGIN_NAME = "venturo-kinerja"
 DEFAULT_API_URL = "https://kinerja-api.venturo.id"
 TIMEOUT_SECONDS = 30
-# Slug dipakai sebagai path file; tolak apa pun selain segmen kebab-case (mis. "..", "/x").
-SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*)*$")
+# Sama dengan slugPattern kinerja-be (context.service.go). Slug dipakai sebagai path file;
+# pola ini menolak "..", path absolut, dan segmen kosong.
+SLUG_RE = re.compile(r"[a-z0-9_-]{1,64}(/[a-z0-9_-]{1,64})?")
 LOCK_FIELDS = ("category", "skill_type", "version", "description")
 
 
 class SyncError(Exception):
     pass
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Jangan ikuti redirect: urllib akan membawa X-API-Key ke host/skema tujuan."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None  # 3xx jadi HTTPError
 
 
 def api_fetcher(base_url, api_key):
@@ -49,12 +57,13 @@ def api_fetcher(base_url, api_key):
     if parsed.scheme != "https" and not (parsed.scheme == "http" and local):
         raise SyncError("KINERJA_API_URL harus https (http hanya untuk localhost): %s" % base_url)
     prefix = base_url.rstrip("/") + "/review/v1"
+    opener = urllib.request.build_opener(_NoRedirect)
 
     def fetch(path):
         req = urllib.request.Request(prefix + path, headers={
             "X-API-Key": api_key, "Accept": "application/json", "User-Agent": "venturo-kinerja-sync"})
         try:
-            with urllib.request.urlopen(req, timeout=TIMEOUT_SECONDS) as resp:
+            with opener.open(req, timeout=TIMEOUT_SECONDS) as resp:
                 body = json.load(resp)
         except urllib.error.HTTPError as err:
             err.close()
@@ -78,7 +87,7 @@ def fetch_active(fetch):
         if not active:
             continue  # slug yang baru punya versi pending
         slug = entry.get("slug", "")
-        if not SLUG_RE.match(slug):
+        if not SLUG_RE.fullmatch(slug):
             raise SyncError("slug tidak valid dari API: %r" % slug)
         full = fetch("/contexts/" + urllib.parse.quote(str(active["id"]), safe=""))
         # Versi aktif bisa berganti di antara dua request; gagal saja, jadwal berikut mengulang.

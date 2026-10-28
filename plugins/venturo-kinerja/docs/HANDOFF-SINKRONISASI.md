@@ -90,7 +90,7 @@ Syarat:
 - `content` **mentah**, termasuk front-matter, **sebelum** placeholder (`{{SEVERITY_PENALTIES}}`, `{{SEVERITY_SCOPE}}`) dirender. Plugin merender sendiri lewat `scripts/render_rule.py`.
 - `ETag` / `If-None-Match`, agar sync terjadwal murah bila tidak ada perubahan.
 - Rate limit, dan 401/403 untuk key tanpa izin.
-- `effective_config` = hasil `QualityScoreService.Resolve(ctx, repoScope)`. **Perlu keputusan:** `Resolve` menerima `repoScope`, jadi config bisa berbeda per repo. Pilih salah satu: export hanya scope global (repo yang punya config sendiri tidak tercakup), atau export daftar `{repo_scope, effective_config}`.
+- `effective_config` = hasil `QualityScoreService.Resolve` (markdown → stored global → default). Config ini **global**: parameter `repoScope` masih ada di signature tapi diabaikan sejak editor `/score-rules` per repo dihapus, jadi cukup satu config.
 - Bila endpoint ini jadi, `sync_from_kinerja.py` cukup diganti memanggil satu URL ini; format lock tidak berubah.
 
 #### Langkah 2 — Golden test vector mesin skor
@@ -135,12 +135,12 @@ Sudah ada: [`scripts/sync_from_kinerja.py`](../scripts/sync_from_kinerja.py) dan
 Workflow (jadwal 08:00 WIB, `workflow_dispatch`):
 1. `sync_from_kinerja.py --summary $RUNNER_TEMP/kinerja-sync.md`.
 2. Bila ada perubahan: test plugin dengan `continue-on-error`, supaya PR tetap dibuat walau test gagal.
-3. `peter-evans/create-pull-request@v7` ke branch `chore/kinerja-sync`, label `kinerja-sync`, plus `needs-port` bila test gagal; ringkasan sebagai body PR.
+3. `peter-evans/create-pull-request@v7` (dijalankan juga saat tanpa perubahan, supaya PR sync lama yang sudah tidak relevan ditutup) ke branch `chore/kinerja-sync`, label `kinerja-sync`, plus `needs-port` bila test gagal; ringkasan sebagai body PR.
 4. Run diberi status gagal bila test gagal.
 
 Script:
-- `GET /review/v1/contexts`, lalu `GET /review/v1/contexts/:id` untuk tiap slug yang punya versi aktif. Header `X-API-Key`. Hanya https (http hanya untuk localhost).
-- Menolak slug yang bukan segmen kebab-case (slug jadi path file), baris yang tidak lagi aktif/approved (versi berganti di tengah sync), dan listing kosong (rules lama tidak dihapus).
+- `GET /review/v1/contexts`, lalu `GET /review/v1/contexts/:id` untuk tiap slug yang punya versi aktif. Header `X-API-Key`. Hanya https (http hanya untuk localhost), redirect tidak diikuti agar key tidak terbawa ke host lain.
+- Menolak slug di luar pola `slugPattern` kinerja-be (slug jadi path file), baris yang tidak lagi aktif/approved (versi berganti di tengah sync), dan listing kosong (rules lama tidak dihapus).
 - Membandingkan **sha256** konten dan metadata (`category`, `skill_type`, `version`, `description`), bukan nomor versi.
 - Bila ada perubahan: tulis `rules/<slug>.md` apa adanya, hapus file slug yang tidak aktif lagi, tulis ulang `rules.lock.json` (format sama), naikkan patch `plugin.json` + entri marketplace + `metadata.version`. Tanpa perubahan tidak ada file yang disentuh, jadi tidak ada PR.
 
