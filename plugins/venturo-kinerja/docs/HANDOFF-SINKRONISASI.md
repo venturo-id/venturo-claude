@@ -1,7 +1,7 @@
 # Handoff — Sinkronisasi venturo-kinerja dengan Kinerja (BE & FE)
 
 > Dokumen konteks awal untuk tim yang mengerjakan sinkronisasi otomatis. Disusun 27 Okt 2026, diperbarui 28 Okt 2026 setelah dicek ke kode kinerja-be (`production` @ `87a81691`).
-> Status saat ini: **rules = script + workflow sync siap** (langkah 4), tapi **belum bisa jalan**: kinerja-be belum bisa menerbitkan API key ber-izin `review:context:view` (gotcha di langkah 1–3). Sync manual sekali lewat DB (28 Okt 2026): 25 context identik dengan snapshot. **Mesin skor = port manual** (golden vector belum ada).
+> Status saat ini: **rules = script + workflow sync siap** (langkah 4), API key + secret `KINERJA_API_KEY` sudah ada (28 Okt 2026), sync end-to-end lewat API: 25 context identik dengan snapshot. **Pembuatan PR otomatis masih diblokir setelan org** (langkah 4). **Mesin skor = port manual** (golden vector belum ada).
 
 ## 1. Masalah yang diselesaikan
 
@@ -40,14 +40,14 @@ Prosedur manual tetap ada di README plugin (bagian "Sync rules") sebagai cadanga
 
 ## 4. Langkah sinkronisasi
 
-Urutan kerja yang disarankan: **4 → 5 (sudah) → 2 → 3 → 1**. Endpoint untuk langkah 4 sudah ada, tapi API key-nya butuh perbaikan kecil di kinerja-be dulu (gotcha di bawah).
+Urutan kerja yang disarankan: **4 → 5 (sudah) → 2 → 3 → 1**. Endpoint dan API key untuk langkah 4 sudah ada.
 
 ### Sisi kinerja-be (tim Kinerja) — langkah 1–3
 
 Catatan kode (dicek 28 Okt 2026):
 - API key dikirim lewat header **`X-API-Key`**, bukan `Authorization: Bearer` (`internal/middleware/auth.go`, `JWTAuth`). Izin efektif = irisan `scoped_permissions` key dengan izin user pemiliknya.
 - Route context ada di `internal/modules/review/context/main.context.go`. `GET /contexts` dan `GET /contexts/:id` sudah menerima API key dengan izin `review:context:view`.
-- **Gotcha (dicek 28 Okt 2026):** izin API key dihitung dari role **core** pemiliknya (`core.roles`, `RoleRepository.GetUserPermissions`), bukan dari izin review turunan level jabatan yang ada di JWT login. `review:context:view` milik member biasa adalah izin turunan, jadi key ber-scope `review:context:view` ditolak saat dibuat (`400 permission 'review:context:view' not available to user`), dan key tanpa scope memegang izin core pemiliknya (403 di `RequirePermission` bila pemilik punya izin core lain; bila tidak punya izin core sama sekali, key jatuh ke izin user penuh, jadi jangan dipakai). Role core juga **tidak bisa** memberi izin ini: level role core (`viewer`/`editor`/`admin`, `permission_levels.go`) hanya menghasilkan aksi `read`, `create`, `update`, `delete`, `export`, `import`, `restore`, `approve`, tidak pernah `view`. Jadi API key untuk sync butuh perubahan kinerja-be: `validateScopes` dan `buildClaims` di `api_key.service.go` ikut memakai izin turunan (`authz`) pemilik key.
+- **Gotcha (sudah diperbaiki di kinerja-be `588c68fd`, 28 Okt 2026):** dulu izin API key dihitung dari role **core** pemiliknya (`core.roles`, `RoleRepository.GetUserPermissions`), bukan dari izin review turunan level jabatan yang ada di JWT login. `review:context:view` milik member biasa adalah izin turunan, jadi key ber-scope `review:context:view` ditolak saat dibuat (`400 permission 'review:context:view' not available to user`), dan key tanpa scope memegang izin core pemiliknya (403 di `RequirePermission` bila pemilik punya izin core lain; bila tidak punya izin core sama sekali, key jatuh ke izin user penuh, jadi jangan dipakai). Role core juga **tidak bisa** memberi izin ini: level role core (`viewer`/`editor`/`admin`, `permission_levels.go`) hanya menghasilkan aksi `read`, `create`, `update`, `delete`, `export`, `import`, `restore`, `approve`, tidak pernah `view`. Perbaikannya: `validateScopes` dan `buildClaims` di `api_key.service.go` kini ikut memakai izin role saat ini pemilik key (`middleware.StaticPermissionsNow`). Kinerja tidak punya UI API key; buat lewat `POST /core/v1/api-keys` dengan JWT login.
 - kinerja-be **belum punya `.github/`** (deploy lewat Jenkins). Action di langkah 3 dibuat dari nol, dan pastikan GitHub Actions aktif di repo itu.
 
 #### Langkah 1 — Endpoint export context (tiket KJ-G, optimasi)
@@ -56,7 +56,7 @@ Sync tidak butuh endpoint ini (langkah 4 memakai `GET /contexts` + `GET /context
 
 ```
 GET /review/v1/contexts/export
-X-API-Key: <API key>   (modul core/api_key; izin review:context:view, setelah gotcha API key di atas diperbaiki)
+X-API-Key: <API key>   (modul core/api_key; izin review:context:view)
 ```
 
 Response (dibungkus envelope biasa `{"data": …, "message": …}`):
@@ -145,9 +145,11 @@ Script:
 - Membandingkan **sha256** konten dan metadata (`category`, `skill_type`, `version`, `description`), bukan nomor versi.
 - Bila ada perubahan: tulis `rules/<slug>.md` apa adanya, hapus file slug yang tidak aktif lagi, tulis ulang `rules.lock.json` (format sama), naikkan patch `plugin.json` + entri marketplace + `metadata.version`. Tanpa perubahan tidak ada file yang disentuh, jadi tidak ada PR.
 
-Setelan repo venturo-claude yang perlu dibuat (belum ada):
+Setelan repo venturo-claude:
 - Self-hosted runner terdaftar di repo/org dengan label `self-hosted` dan sudah punya `python3` + `git` (Go opsional). Workflow tidak punya trigger `pull_request`, jadi PR fork tidak bisa menjalankan kode di runner ini; jangan tambahkan trigger itu selama repo publik.
-- Secret `KINERJA_API_KEY`: API key kinerja-be di-scope hanya ke `review:context:view`. Belum bisa dibuat sampai kinerja-be diperbaiki (lihat gotcha di langkah 1–3).
+- ✅ Secret `KINERJA_API_KEY`: key "venturo-claude kinerja-sync" (scope hanya `review:context:view`, milik syahfei@venturo.pro; mati bila akun itu dinonaktifkan).
+- ⚠ Org venturo-id **memblokir** "Allow GitHub Actions to create and approve pull requests" (dicek 28 Okt 2026, PUT di level repo ditolak 409). Sampai org admin mengizinkannya, atau secret `KINERJA_SYNC_TOKEN` diisi PAT, langkah create-pull-request gagal setelah branch `chore/kinerja-sync` di-push.
+- ⚠ Runner landa adalah runner org di group `Default`; pastikan group itu mengizinkan repo publik, kalau tidak job menunggu runner selamanya.
 - Opsional variable `KINERJA_API_URL` (default `https://kinerja-api.venturo.id`).
 - Opsional secret `KINERJA_SYNC_TOKEN` (PAT/App token, `contents` + `pull-requests` write). PR yang dibuat dengan `GITHUB_TOKEN` bawaan **tidak memicu workflow lain**, jadi CI tidak jalan di PR sync tanpa token ini.
 - Label `kinerja-sync` dan `needs-port` (dibuat otomatis oleh action bila belum ada).
