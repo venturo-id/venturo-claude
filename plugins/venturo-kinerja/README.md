@@ -289,9 +289,10 @@ jalan tiap 08:00 WIB (dan manual lewat **Run workflow**). Ia menjalankan
 `chore/kinerja-sync` (label `kinerja-sync`, plus `needs-port` bila test gagal). Rencana lanjutan
 (export KJ-G, golden vector, pemicu dari kinerja-be): [`docs/HANDOFF-SINKRONISASI.md`](docs/HANDOFF-SINKRONISASI.md).
 
-Job jalan di self-hosted runner (`runs-on: self-hosted`, butuh `python3` + `git`).
+Job jalan di runner khusus repo di VM landa (`runs-on: [self-hosted, venturo-claude-sync]`).
 Setelan repo: secret `KINERJA_API_KEY` (API key kinerja-be, izin `review:context:view`),
-opsional variable `KINERJA_API_URL` dan secret `KINERJA_SYNC_TOKEN` (agar CI jalan di PR sync).
+secret `KINERJA_SYNC_TOKEN` (PAT bot `venturo-pro`, karena org melarang GITHUB_TOKEN membuat PR),
+opsional variable `KINERJA_API_URL`.
 
 Lokal (perlu API key sendiri):
 

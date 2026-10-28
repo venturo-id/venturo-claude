@@ -1,7 +1,7 @@
 # Handoff — Sinkronisasi venturo-kinerja dengan Kinerja (BE & FE)
 
 > Dokumen konteks awal untuk tim yang mengerjakan sinkronisasi otomatis. Disusun 27 Okt 2026, diperbarui 28 Okt 2026 setelah dicek ke kode kinerja-be (`production` @ `87a81691`).
-> Status saat ini: **rules = script + workflow sync siap** (langkah 4), API key + secret `KINERJA_API_KEY` sudah ada (28 Okt 2026), sync end-to-end lewat API: 25 context identik dengan snapshot. **Pembuatan PR otomatis masih diblokir setelan org** (langkah 4). **Mesin skor = port manual** (golden vector belum ada).
+> Status saat ini: **rules = script + workflow sync siap** (langkah 4), API key + secret `KINERJA_API_KEY` sudah ada (28 Okt 2026), sync end-to-end lewat API: 25 context identik dengan snapshot. Workflow jalan di runner khusus landa dan run manual pertama lulus; PR sync dibuka atas nama bot `venturo-pro` (langkah 4). **Mesin skor = port manual** (golden vector belum ada).
 
 ## 1. Masalah yang diselesaikan
 
@@ -133,7 +133,7 @@ Kebutuhan: token GitHub (fine-grained PAT atau GitHub App) dengan izin **`action
 
 Sudah ada: [`scripts/sync_from_kinerja.py`](../scripts/sync_from_kinerja.py) dan [`.github/workflows/kinerja-sync.yml`](../../../.github/workflows/kinerja-sync.yml).
 
-Workflow (self-hosted runner, jadwal 08:00 WIB, `workflow_dispatch`):
+Workflow (runner `[self-hosted, venturo-claude-sync]`, jadwal 08:00 WIB, `workflow_dispatch`):
 1. `sync_from_kinerja.py --summary $RUNNER_TEMP/kinerja-sync.md`.
 2. Bila ada perubahan: test plugin dengan `continue-on-error`, supaya PR tetap dibuat walau test gagal.
 3. `peter-evans/create-pull-request@v7` (dijalankan juga saat tanpa perubahan, supaya PR sync lama yang sudah tidak relevan ditutup) ke branch `chore/kinerja-sync`, label `kinerja-sync`, plus `needs-port` bila test gagal; ringkasan sebagai body PR.
@@ -146,12 +146,11 @@ Script:
 - Bila ada perubahan: tulis `rules/<slug>.md` apa adanya, hapus file slug yang tidak aktif lagi, tulis ulang `rules.lock.json` (format sama), naikkan patch `plugin.json` + entri marketplace + `metadata.version`. Tanpa perubahan tidak ada file yang disentuh, jadi tidak ada PR.
 
 Setelan repo venturo-claude:
-- Self-hosted runner terdaftar di repo/org dengan label `self-hosted` dan sudah punya `python3` + `git` (Go opsional). Workflow tidak punya trigger `pull_request`, jadi PR fork tidak bisa menjalankan kode di runner ini; jangan tambahkan trigger itu selama repo publik.
+- ✅ Runner khusus repo `landa-venturo-claude` (label `venturo-claude-sync`) di VM landa (`ssh vm-landa-ts`): user unix `ghrunner-vc` tanpa sudo dan tanpa akses ke `/home/landa` (runner org dan checkout repo privat), folder `/home/ghrunner-vc/actions-runner`, service `actions.runner.venturo-id-venturo-claude.landa-venturo-claude`. Runner org di group `Default` tidak melayani repo publik, jadi jangan diarahkan ke sana. Workflow tidak punya trigger `pull_request`; jangan tambahkan selama repo publik.
+- ✅ Approval workflow PR fork: `all_external_contributors` (semua kontributor luar butuh approval sebelum workflow jalan).
 - ✅ Secret `KINERJA_API_KEY`: key "venturo-claude kinerja-sync" (scope hanya `review:context:view`, milik syahfei@venturo.pro; mati bila akun itu dinonaktifkan).
-- ⚠ Org venturo-id **memblokir** "Allow GitHub Actions to create and approve pull requests" (dicek 28 Okt 2026, PUT di level repo ditolak 409). Sampai org admin mengizinkannya, atau secret `KINERJA_SYNC_TOKEN` diisi PAT, langkah create-pull-request gagal setelah branch `chore/kinerja-sync` di-push.
-- ⚠ Runner landa adalah runner org di group `Default`; pastikan group itu mengizinkan repo publik, kalau tidak job menunggu runner selamanya.
+- ✅ Secret `KINERJA_SYNC_TOKEN` = PAT bot `venturo-pro` (sama dengan `review.app_settings.github_pat` di Kinerja). Perlu karena org venturo-id memblokir "Allow GitHub Actions to create and approve pull requests" (PUT di level repo ditolak 409). **Bila PAT bot dirotasi di Kinerja, perbarui secret ini juga**; kalau tidak, langkah create-pull-request gagal saat ada perubahan.
 - Opsional variable `KINERJA_API_URL` (default `https://kinerja-api.venturo.id`).
-- Opsional secret `KINERJA_SYNC_TOKEN` (PAT/App token, `contents` + `pull-requests` write). PR yang dibuat dengan `GITHUB_TOKEN` bawaan **tidak memicu workflow lain**, jadi CI tidak jalan di PR sync tanpa token ini.
 - Label `kinerja-sync` dan `needs-port` (dibuat otomatis oleh action bila belum ada).
 
 Batasan yang diketahui: `synced_at` hanya ditulis ulang bila ada perubahan. Bila rules tidak berubah lebih dari 14 hari, peringatan `⚠ rules N hari` muncul walau sync berjalan normal. Selesaikan bersama langkah 6 (mis. ambang dinaikkan, atau Action mencatat waktu cek terakhir tanpa rilis).
@@ -178,7 +177,7 @@ Batasan yang diketahui: `synced_at` hanya ditulis ulang bila ada perubahan. Bila
 
 ## 5. Definition of done
 
-- [ ] Secret `KINERJA_API_KEY` terpasang dan **Run workflow** `kinerja-sync` pertama selesai tanpa PR (rules sama dengan production) atau dengan PR berisi drift yang memang ada.
+- [x] Secret `KINERJA_API_KEY` terpasang dan **Run workflow** `kinerja-sync` pertama selesai tanpa PR (rules sama dengan production) atau dengan PR berisi drift yang memang ada.
 - [ ] KJ-G hidup di production; `curl -H "X-API-Key: …"` mengembalikan 25 context dengan sha256 yang sama dengan `rules.lock.json` saat ini (kecuali yang memang berubah).
 - [ ] Golden vector ada di kinerja-be dan lulus di `simulate_score.py`.
 - [ ] Approve satu context uji → dalam ≤ 5 menit muncul PR `kinerja-sync` berisi diff slug itu. Butuh lingkungan staging kinerja-be: dev server lokal FE mengarah ke API production, jangan approve context uji di sana.
